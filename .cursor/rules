@@ -1,0 +1,46 @@
+# VibCart Ecosystem - Cursor Rules
+
+## Project Structure
+This is a multi-root workspace containing 3 Next.js TypeScript applications:
+- vibecart: Customer-facing e-commerce app
+- vibecart-admin: Admin dashboard for managing the platform  
+- vibecart-vendor: Vendor portal for sellers
+
+## Coding Standards
+- Use TypeScript for all files
+- Follow Next.js 15 App Router patterns
+- Use Tailwind CSS for styling
+- Use Radix UI components for primitives
+- Implement proper error handling with try-catch
+- Use Zustand for global state management
+- Use Jotai for component-level state
+
+## File Organization
+- Components: Use barrel exports in index.tsx files
+- Utils: Keep shared utilities in lib/ directory
+- Database: Models in lib/database/models, actions in lib/database/actions
+- Types: Define TypeScript interfaces for all data structures
+
+## Performance
+- Use Next.js Image component for all images
+- Implement proper loading states
+- Use React.memo for expensive components
+- Implement pagination for large data sets
+
+## Database
+- Use Mongoose for MongoDB integration
+- Implement proper data validation
+- Use server actions for data mutations
+- Follow RESTful API patterns
+
+## Security
+- Use Clerk for authentication
+- Implement proper input validation
+- Use HTTPS for all external requests
+- Sanitize user inputs
+
+## UI/UX
+- Mobile-first responsive design
+- Use consistent spacing with Tailwind
+- Implement proper loading and error states
+- Follow accessibility guidelines (WCAG) 

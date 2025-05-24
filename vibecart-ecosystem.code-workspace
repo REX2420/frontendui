@@ -1,0 +1,109 @@
+{
+  "folders": [
+    {
+      "name": "🛒 VibCart (Customer App)",
+      "path": "."
+    },
+    {
+      "name": "🔧 VibCart Admin",
+      "path": "../vibecart-admin"
+    },
+    {
+      "name": "🏪 VibCart Vendor",
+      "path": "../vibecart-vendor"
+    }
+  ],
+  "settings": {
+    "typescript.preferences.includePackageJsonAutoImports": "auto",
+    "typescript.preferences.includeCompletionsForModuleExports": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true,
+      "source.organizeImports": true
+    },
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/.git": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/package-lock.json": true
+    },
+    "tailwindCSS.experimental.configFile": {
+      "vibecart": "./tailwind.config.ts",
+      "vibecart-admin": "../vibecart-admin/tailwind.config.ts", 
+      "vibecart-vendor": "../vibecart-vendor/tailwind.config.ts"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "bradlc.vscode-tailwindcss",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "ms-vscode.vscode-typescript-next",
+      "bradlc.vscode-tailwindcss",
+      "formulahendry.auto-rename-tag",
+      "christian-kohler.path-intellisense",
+      "ms-vscode.vscode-json"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "🛒 Start Customer App",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:🛒 VibCart (Customer App)}"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "🔧 Start Admin Dashboard",
+        "type": "shell", 
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:🔧 VibCart Admin}"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "🏪 Start Vendor Portal",
+        "type": "shell",
+        "command": "npm run dev", 
+        "options": {
+          "cwd": "${workspaceFolder:🏪 VibCart Vendor}"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "🚀 Start All Services",
+        "dependsOrder": "parallel",
+        "dependsOn": [
+          "🛒 Start Customer App",
+          "🔧 Start Admin Dashboard", 
+          "🏪 VibCart Vendor Portal"
+        ]
+      }
+    ]
+  }
+} 
