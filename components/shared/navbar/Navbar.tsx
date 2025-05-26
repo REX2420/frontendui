@@ -10,6 +10,7 @@ import CartDrawer from "./CartDrawer";
 import MobileHamBurgerMenu from "./mobile/hamburgerMenu";
 import NavbarInput from "./NavbarInput";
 import AccountDropDown from "@/components/shared/navbar/AccountDropDown";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Navbar = () => {
   const navItems = [
@@ -53,7 +54,7 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="w-full bg-white">
+    <nav className="w-full bg-background border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-15 ">
           <div className="flex items-center lg:w-1/3">
@@ -71,7 +72,8 @@ const Navbar = () => {
             </Link>
           </div>
 
-          <div className="flex items-center justify-end lg:w-1/3">
+          <div className="flex items-center justify-end lg:w-1/3 gap-2">
+            <ThemeToggle />
             <div className="">
               {" "}
               <AccountDropDown />
@@ -83,18 +85,18 @@ const Navbar = () => {
         <NavbarInput responsive={true} />
       </div>
 
-      <div className="hidden lg:block border-t border-gray-200 mt-4">
+      <div className="hidden lg:block border-t border-border mt-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-evenly py-3">
             {navItems.map((item) => (
               <Link
                 key={item.name}
                 href="#"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 group transition duration-300"
+                className="text-sm font-medium text-foreground hover:text-primary group transition duration-300"
               >
                 {item.name}
 
-                <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-black"></span>
+                <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-foreground"></span>
               </Link>
             ))}
           </div>

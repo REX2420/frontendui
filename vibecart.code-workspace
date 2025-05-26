@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../vibecart-admin"
+		},
+		{
+			"path": "../vibecart-vendor"
+		}
+	],
+	"settings": {}
+}

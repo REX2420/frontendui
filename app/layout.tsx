@@ -7,6 +7,8 @@ import MobileBottomBar from "@/components/shared/MobileBottomBar";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import TopBarComponent from "@/components/shared/TopBar";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -30,16 +32,23 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider dynamic={false}>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <TopBarComponent />
-          <Navbar />
-          {children}
-          <MobileBottomBar />
-          <Footer />
-          <Toaster />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TopBarComponent />
+            <Navbar />
+            {children}
+            <MobileBottomBar />
+            <Footer />
+            <Toaster />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
