@@ -57,7 +57,16 @@ const config: Config = {
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			'ios-button': '10px',        // Buttons (default)
+  			'ios-card': '16px',          // Cards / Modals / Sheets (16-20pt)
+  			'ios-card-lg': '20px',       // Cards / Modals / Sheets (larger variant)
+  			'ios-icon': '20px',          // App Icons
+  			'ios-alert': '13px',         // Alert Views / Popups (13-20pt)
+  			'ios-alert-lg': '20px',      // Alert Views / Popups (larger variant)
+  			'ios-container': '8px',      // Containers (8-16pt)
+  			'ios-container-lg': '16px',  // Containers (larger variant)
+  			'ios-tab': '32px',           // Tab Bars (floating styles)
   		},
   		keyframes: {
   			'accordion-down': {

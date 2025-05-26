@@ -63,6 +63,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Add bottom padding on mobile to prevent content being hidden behind mobile bottom bar */
+  @media (max-width: 768px) {
+    body {
+      @apply pb-20;
+    }
+  }
 }
 .ownContainer {
   @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;

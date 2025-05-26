@@ -43,62 +43,62 @@ const MobileBottomBar = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border md:hidden">
-      <div className="flex justify-around items-center h-16">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border md:hidden z-50 shadow-lg">
+      <div className="flex justify-around items-center h-16 px-2">
         <Link
           href="/"
-          className={`flex flex-col items-center transition-colors ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
             isActive("/") 
               ? "text-orange-500" 
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <Home size={24} />
-          <span className="text-xs">Home</span>
+          <Home size={22} />
+          <span className="text-xs mt-1 font-medium">Home</span>
         </Link>
         <button
           onClick={handleOnClickHamburgerMenu}
-          className={`flex flex-col items-center transition-colors ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
             hamMenuOpen
               ? "text-orange-500"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <Grid size={24} />
-          <span className="text-xs">Categories</span>
+          <Grid size={22} />
+          <span className="text-xs mt-1 font-medium">Categories</span>
         </button>
         <Link
           href="/shop"
-          className={`flex flex-col items-center transition-colors ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
             isActive("/shop")
               ? "text-orange-500"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <ShoppingBag size={24} />
-          <span className="text-xs">Shop</span>
+          <ShoppingBag size={22} />
+          <span className="text-xs mt-1 font-medium">Shop</span>
         </Link>
         <button
           onClick={handleOnClickCartMenu}
-          className={`flex flex-col items-center transition-colors ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
             cartMenuOpen
               ? "text-orange-500"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <ShoppingBag size={24} />
-          <span className="text-xs">Cart</span>
+          <ShoppingBag size={22} />
+          <span className="text-xs mt-1 font-medium">Cart</span>
         </button>
         <button
           onClick={handleOnClickAccountMenu}
-          className={`flex flex-col items-center transition-colors ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
             accountMenuOpen || isActive("/profile") || isActive("/account")
               ? "text-orange-500"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <User size={24} />
-          <span className="text-xs">Account</span>
+          <User size={22} />
+          <span className="text-xs mt-1 font-medium">Account</span>
         </button>
       </div>
     </nav>
