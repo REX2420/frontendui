@@ -8,7 +8,7 @@ import NeedOfWebsite from "@/components/shared/home/NeedOfWebsite";
 import ProductCard from "@/components/shared/home/ProductCard";
 import ReviewSection from "@/components/shared/home/ReviewSection";
 import SpecialCombos from "@/components/shared/home/SpecialCombos";
-import { fetchAllWebsiteBanners } from "@/lib/database/actions/banners.actions";
+import { fetchAllWebsiteBanners, fetchAllAppBanners } from "@/lib/database/actions/banners.actions";
 import {
   getAllCrazyDealOffers,
   getAllSpecialComboOffers,
@@ -24,6 +24,10 @@ const HomePage = async () => {
   const desktopImages: any = await fetchAllWebsiteBanners().catch((err) =>
     console.log(err)
   );
+  const appBanners: any = await fetchAllAppBanners().catch((err) =>
+    console.log(err)
+  );
+  const mobileImages = appBanners ? appBanners.map((banner: any) => banner.url) : [];
   const subcategoriesData: any = await getAllSubCategoriesByName(
     "unisex"
   ).catch((err) => console.log(err));
@@ -92,7 +96,7 @@ const HomePage = async () => {
   );
   return (
     <div>
-      <BannerCarousel desktopImages={desktopImages} />
+      <BannerCarousel desktopImages={desktopImages} mobileImages={mobileImages} />
       <SpecialCombos comboData={specialCombosHomeData} />
       <ProductCard
         heading="BEST SELLERS"

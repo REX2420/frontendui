@@ -4,14 +4,20 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const mobileImages = [
+const fallbackMobileImages = [
   "https://placehold.co/400x200?text=Mobile+Slide+1",
   "https://placehold.co/400x200?text=Mobile+Slide+2",
   "https://placehold.co/400x200?text=Mobile+Slide+3",
   "https://placehold.co/400x200?text=Mobile+Slide+4",
 ];
 
-const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
+const BannerCarousel = ({ 
+  desktopImages, 
+  mobileImages 
+}: { 
+  desktopImages: string[];
+  mobileImages?: string[];
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -26,7 +32,7 @@ const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 485); // Detect if the screen is mobile size
+      setIsMobile(window.innerWidth <= 768); // Updated to standard mobile breakpoint
     };
 
     window.addEventListener("resize", handleResize);
@@ -39,7 +45,17 @@ const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
     };
   }, []);
 
-  const images = isMobile ? mobileImages : desktopImages;
+  // Use provided mobile images or fallback to placeholder images, or desktop images if no mobile images
+  const mobileBanners = mobileImages && mobileImages.length > 0 
+    ? mobileImages 
+    : (desktopImages && desktopImages.length > 0 ? desktopImages : fallbackMobileImages);
+  
+  const images = isMobile ? mobileBanners : (desktopImages || []);
+
+  // Don't render if no images available
+  if (!images || images.length === 0) {
+    return null;
+  }
 
   return (
     <div
