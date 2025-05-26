@@ -2,12 +2,15 @@
 import { useStore, useAtom } from "jotai";
 import { Grid, Home, Menu, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   hamburgerMenuState,
   cartMenuState,
   accountMenuState,
 } from "./navbar/store";
+
 const MobileBottomBar = () => {
+  const pathname = usePathname();
   const [hamMenuOpen, setHamMenuOpen] = useAtom(hamburgerMenuState, {
     store: useStore(),
   });
@@ -30,47 +33,73 @@ const MobileBottomBar = () => {
     setAccountMenuOpen(true);
     console.log("acc", accountMenuOpen);
   };
+
+  // Helper function to determine if a route is active
+  const isActive = (path: string) => {
+    if (path === "/") {
+      return pathname === "/";
+    }
+    return pathname.startsWith(path);
+  };
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-t-200 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border md:hidden">
       <div className="flex justify-around items-center h-16">
         <Link
-          href={"/"}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
+          href="/"
+          className={`flex flex-col items-center transition-colors ${
+            isActive("/") 
+              ? "text-orange-500" 
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Home className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Home</span>
+          <Home size={24} />
+          <span className="text-xs">Home</span>
         </Link>
-        <Link
-          href={"#"}
-          onClick={() => handleOnClickHamburgerMenu()}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
+        <button
+          onClick={handleOnClickHamburgerMenu}
+          className={`flex flex-col items-center transition-colors ${
+            hamMenuOpen
+              ? "text-orange-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Menu className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Menu</span>
+          <Grid size={24} />
+          <span className="text-xs">Categories</span>
+        </button>
+        <Link
+          href="/shop"
+          className={`flex flex-col items-center transition-colors ${
+            isActive("/shop")
+              ? "text-orange-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ShoppingBag size={24} />
+          <span className="text-xs">Shop</span>
         </Link>
-        <Link
-          href={"/shop"}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
+        <button
+          onClick={handleOnClickCartMenu}
+          className={`flex flex-col items-center transition-colors ${
+            cartMenuOpen
+              ? "text-orange-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Grid className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Shop</span>
-        </Link>
-        <Link
-          href={"#"}
-          onClick={() => handleOnClickCartMenu()}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
+          <ShoppingBag size={24} />
+          <span className="text-xs">Cart</span>
+        </button>
+        <button
+          onClick={handleOnClickAccountMenu}
+          className={`flex flex-col items-center transition-colors ${
+            accountMenuOpen || isActive("/profile") || isActive("/account")
+              ? "text-orange-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <ShoppingBag className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Cart</span>
-        </Link>{" "}
-        <Link
-          href={"#"}
-          onClick={() => handleOnClickAccountMenu()}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
-        >
-          <User className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Account</span>
-        </Link>
+          <User size={24} />
+          <span className="text-xs">Account</span>
+        </button>
       </div>
     </nav>
   );

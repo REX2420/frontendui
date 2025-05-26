@@ -99,7 +99,7 @@ const CartDrawer = () => {
             className="relative"
           >
             <ShoppingBag size={24} />
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-black rounded-full">
+            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-primary-foreground bg-primary rounded-full">
               {cart.length}
             </span>
           </Button>
@@ -130,14 +130,14 @@ const CartDrawer = () => {
               ))
             )}
           </div>
-          <div className="absolute bottom-2 w-[90%] mt-6  bg-white">
-            <p className="text-sm text-gray-500">
+          <div className="absolute bottom-2 w-[90%] mt-6 bg-background">
+            <p className="text-sm text-muted-foreground">
               Tax included. Shipping calculated at checkout.
             </p>
             <Button
               onClick={() => saveCartToDbHandler()}
               disabled={cart.length === 0}
-              className="w-full mt-4 bg-black text-white hover:bg-gray-800 gap-[10px]"
+              className="w-full mt-4 gap-[10px]"
             >
               {loading
                 ? "Loading..."

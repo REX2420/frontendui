@@ -37,10 +37,10 @@ const NeedOfWebsite = () => {
               alt="_"
               className="sm:w-[50px] sm:h-[50px] mb-[20px]"
             />
-            <h3 className="text-sm sm:text-lg mb-1 sm:mb-2 textGap text-gray-700">
+            <h3 className="text-sm sm:text-lg mb-1 sm:mb-2 textGap text-foreground">
               {feature.title}
             </h3>
-            <p className="text-xs sm:text-sm textGap text-gray-500">
+            <p className="text-xs sm:text-sm textGap text-muted-foreground">
               {feature.description}
             </p>
           </div>

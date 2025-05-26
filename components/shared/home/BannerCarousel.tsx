@@ -66,7 +66,7 @@ const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
         size={"icon"}
         onClick={prevSlide}
         aria-label="Previous slide"
-        className="absolute top-1/2 left-4 transform -translate-y-1/2 text-black rounded-none"
+        className="absolute top-1/2 left-4 transform -translate-y-1/2 rounded-none"
       >
         <ChevronLeft size={24} />
       </Button>
@@ -75,7 +75,7 @@ const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
         size={"icon"}
         onClick={nextSlide}
         aria-label="Next slide"
-        className="absolute top-1/2 right-4 transform -translate-y-1/2 text-black rounded-none"
+        className="absolute top-1/2 right-4 transform -translate-y-1/2 rounded-none"
       >
         <ChevronRight size={24} />
       </Button>
@@ -83,8 +83,8 @@ const BannerCarousel = ({ desktopImages }: { desktopImages: string[] }) => {
         {images.map((_, index) => (
           <button
             key={index}
-            className={`w-3 h-3 rounded-full ${
-              index === currentIndex ? "bg-white" : "bg-white/50"
+            className={`w-3 h-3 rounded-full transition-colors ${
+              index === currentIndex ? "bg-orange-500" : "bg-orange-500/50"
             }`}
             onClick={() => setCurrentIndex(index)}
             aria-label={`Go to slide ${index + 1}`}

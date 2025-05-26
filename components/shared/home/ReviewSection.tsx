@@ -48,7 +48,7 @@ const ReviewSection = () => {
           <div className="flex">
             {reviews.map((review) => (
               <div key={review.id} className="flex-[0_0_100%] min-w-0  px-4">
-                <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div className="bg-card text-card-foreground rounded-lg p-6 flex flex-col items-center border border-border">
                   <img
                     src={review.image}
                     alt={`${review.name}'s profile`}
@@ -61,14 +61,14 @@ const ReviewSection = () => {
                         className={`w-6 h-6 ${
                           index < review.rating
                             ? "text-yellow-400 fill-current"
-                            : "text-gray-300"
+                            : "text-muted-foreground"
                         }`}
                       />
                     ))}
                   </div>
                   <p className="text-center mb-6 text-lg">{review.text}</p>
                   <p className="font-semibold text-xl mb-1">{review.name}</p>
-                  <p className="text-gray-600 flex justify-center items-center gap-0">
+                  <p className="text-muted-foreground flex justify-center items-center gap-0">
                     <CiInstagram size={15} />
                     {review.instagram}
                   </p>
@@ -79,13 +79,13 @@ const ReviewSection = () => {
         </div>
         <button
           onClick={scrollPrev}
-          className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-transparent rounded-full p-2"
+          className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-background/80 hover:bg-background border border-border text-foreground rounded-full p-2 transition-colors"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <button
           onClick={scrollNext}
-          className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-transparent rounded-full p-2"
+          className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-background/80 hover:bg-background border border-border text-foreground rounded-full p-2 transition-colors"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
