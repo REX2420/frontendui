@@ -21,15 +21,15 @@ interface Product {
 const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
   return (
     <div
-      className="w-full flex-shrink-0 mb-2 group  justify-center "
+      className="w-full flex-shrink-0 mb-2 group justify-center border border-gray-300 rounded-[10px] p-3"
       key={product.slug}
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-[10px]">
         <Link href={`/product/${product.slug}?style=0`}>
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-auto object-cover mb-4 transition-transform duration-700 ease-in-out transform group-hover:scale-110"
+            className="w-full h-auto object-cover mb-4 transition-transform duration-700 ease-in-out transform group-hover:scale-110 rounded-[10px]"
           />
         </Link>
         <div className="absolute top-2 left-2 flex gap-2">
@@ -89,8 +89,8 @@ const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
         </span> */}
       </div>
       {!shop && (
-        <Link href={`/product/${product.id}`}>
-          <Button className="w-full bg-black text-white hover:bg-gray-800">
+        <Link href={`/product/${product.slug}?style=0`}>
+          <Button className="w-full bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:text-white dark:hover:bg-orange-700">
             VIEW PRODUCT
           </Button>
         </Link>

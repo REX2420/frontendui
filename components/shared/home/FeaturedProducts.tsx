@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { Minus, Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Star } from "lucide-react";
 import Link from "next/link";
 
 const ProductCarousel = ({ products }: { products: any[] }) => {
@@ -33,129 +33,110 @@ const ProductCarousel = ({ products }: { products: any[] }) => {
     }
   }, [emblaApi]);
 
+  // Transform products data
+  const transformedProducts = products.map((product: any) => ({
+    id: product._id,
+    name: product.name,
+    category: product.category.name,
+    image: product.subProducts[0]?.images[0].url || "",
+    rating: product.rating,
+    reviews: product.numReviews,
+    price: product.subProducts[0]?.sizes[0]?.price || 0,
+    originalPrice: product.subProducts[0]?.originalPrice || 0,
+    discount: product.subProducts[0]?.discount || 0,
+    isBestseller: product.featured,
+    isSale: product.subProducts[0]?.isSale || false,
+    slug: product.slug,
+    prices: product.subProducts[0]?.sizes
+      .map((s: any) => s.price)
+      .sort((a: any, b: any) => a - b),
+  }));
+
   return (
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 ">
+    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="heading mb-[10px] ownContainer text-center uppercase sm:mb-[40px]">
         FEATURED PRODUCTS
       </div>
       <div className="embla overflow-hidden" ref={emblaRef}>
         <div className="embla__container flex">
-          {products.map((product, index) => {
-            const subProduct = product.subProducts?.[0]; // Assuming you're displaying the first sub-product
-            const productImage =
-              subProduct?.images?.[0]?.url || "https://placehold.co/600x600";
-            const productPrice = subProduct?.sizes?.[0]?.price || "N/A";
-            const originalPrice =
-              productPrice + (productPrice * subProduct.discount) / 100;
-            const discountPercent = subProduct.discount || 0;
-
-            return (
-              <div
-                key={index}
-                className="embla__slide flex-[0_0_100%] min-w-0 flex flex-col lg:flex-row gap-4 sm:gap-8"
-              >
-                <div className="lg:w-1/2 flex justify-center items-center">
-                  <img
-                    src={productImage}
-                    alt={product.name}
-                    width={600}
-                    height={600}
-                    className="w-full max-w-md h-auto object-cover rounded-lg shadow-md"
-                  />
-                </div>
-                <div className="lg:w-1/2 space-y-3 sm:space-y-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold">
-                    {product.name}
-                  </h2>
-                  <p className="text-xs lg:text-sm text-gray-500">
-                    {product.category.name}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < product.rating
-                              ? "text-yellow-400 fill-yellow-400"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-sm font-medium">
-                      {product.rating}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      ({product.numReviews} Reviews)
-                    </span>
-                  </div>
-
-                  <p className="text-sm sm:text-base text-gray-600">
-                    {product.description.slice(0, 200)}...
-                    <span className="text-blue-500 cursor-pointer ml-1 hover:underline">
-                      Read More
-                    </span>
-                  </p>
-
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4">
-                    <div className="mb-4 lg:mb-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl lg:text-3xl font-bold">
-                          ₹{productPrice}
-                        </span>
-                        {discountPercent > 0 && (
-                          <>
-                            <span className="text-lg text-gray-500 line-through">
-                              ₹{originalPrice.toFixed(2)}
-                            </span>
-                            <span className="text-red-500 font-semibold">
-                              -{discountPercent}%
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Inclusive of all taxes
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-0">
-                      <Button
-                        variant="outline"
-                        className="bg-[#F2F2F2]"
-                        size="icon"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-12 text-center border-y-2 py-[6px]">
-                        1
-                      </span>
-                      <Button
-                        variant="outline"
-                        className="bg-[#F2F2F2]"
-                        size="icon"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
+          {transformedProducts.map((product, index) => (
+            <div
+              key={index}
+              className="embla__slide flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_25%] min-w-0 px-2"
+            >
+              <div className="w-full flex-shrink-0 mb-2 group justify-center border border-gray-300 rounded-[10px] p-3">
+                <div className="relative overflow-hidden rounded-[10px]">
                   <Link href={`/product/${product.slug}?style=0`}>
-                    <Button className="w-full sm:w-auto px-8">
-                      Learn More
-                    </Button>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-auto object-cover mb-4 transition-transform duration-700 ease-in-out transform group-hover:scale-110 rounded-[10px]"
+                    />
                   </Link>
+                  <div className="absolute top-2 left-2 flex gap-2">
+                    {product.isBestseller && (
+                      <span className="bg-[#E1B87F] text-white text-xs font-semibold px-2 py-1 rounded">
+                        BESTSELLER
+                      </span>
+                    )}
+                    {product.isSale && (
+                      <span className="bg-[#7EBFAE] text-white text-xs font-semibold px-2 py-1 rounded">
+                        SALE
+                      </span>
+                    )}
+                  </div>
+                  {typeof product?.discount !== "undefined" && product?.discount > 0 && (
+                    <span className="absolute bottom-2 left-2 bg-[#7EBFAE] text-white text-xs font-semibold px-2 py-1 rounded">
+                      {product.discount}% OFF
+                    </span>
+                  )}
                 </div>
+                <div className="text-xs text-gray-500 mb-1 textGap text-[10px]">
+                  {product.category.length > 25
+                    ? product.category.substring(0, 25) + "..."
+                    : product.category}
+                </div>
+                <h3 className="font-semibold text-[13px] sm:text-sm mb-2 sm:textGap">
+                  {product.name.length > 20
+                    ? product.name.substring(0, 20) + "..."
+                    : product.name}
+                </h3>
+                <div className="flex items-center mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-semibold ml-1">{product.rating}</span>
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({product.reviews} Reviews)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="font-semibold text-[13px] sm:text-sm">
+                    {product.prices.length === 1
+                      ? `₹${
+                          product.prices[0] - (product.prices[0] * product.discount) / 100
+                        }`
+                      : `From ₹${
+                          product.prices[0] - (product.prices[0] * product.discount) / 100
+                        } to ₹${
+                          product.prices[product.prices.length - 1] -
+                          (product.prices[product.prices.length - 1] * product.discount) /
+                            100
+                        }`}
+                  </span>
+                </div>
+                <Link href={`/product/${product.slug}?style=0`}>
+                  <Button className="w-full bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:text-white dark:hover:bg-orange-700">
+                    VIEW PRODUCT
+                  </Button>
+                </Link>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Add navigation dots */}
       <div className="flex justify-center space-x-2 pt-6">
-        {products.map((_, index) => (
+        {transformedProducts.map((_, index) => (
           <button
             key={index}
             className={`w-3 h-3 rounded-full ${

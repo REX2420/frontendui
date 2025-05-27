@@ -49,15 +49,15 @@ const HomePage = async () => {
     (product: any) => ({
       id: product._id,
       name: product.name,
-      category: product.category, // You might need to format this
-      image: product.subProducts[0]?.images[0].url || "", // Adjust to match your image structure
+      category: typeof product.category === 'object' && product.category?.name ? product.category.name : "Electronics",
+      image: product.subProducts[0]?.images[0].url || "",
       rating: product.rating,
       reviews: product.numReviews,
-      price: product.subProducts[0]?.price || 0, // Adjust to match your pricing structure
-      originalPrice: product.subProducts[0]?.originalPrice || 0, // Add logic for original price
+      price: product.subProducts[0]?.price || 0,
+      originalPrice: product.subProducts[0]?.originalPrice || 0,
       discount: product.subProducts[0]?.discount || 0,
       isBestseller: product.featured,
-      isSale: product.subProducts[0]?.isSale || false, // Adjust if you have sale logic
+      isSale: product.subProducts[0]?.isSale || false,
       slug: product.slug,
       prices: product.subProducts[0]?.sizes
         .map((s: any) => {
@@ -72,15 +72,15 @@ const HomePage = async () => {
     (product: any) => ({
       id: product._id,
       name: product.name,
-      category: product.category, // You might need to format this
-      image: product.subProducts[0]?.images[0].url || "", // Adjust to match your image structure
+      category: typeof product.category === 'object' && product.category?.name ? product.category.name : "Electronics",
+      image: product.subProducts[0]?.images[0].url || "",
       rating: product.rating,
       reviews: product.numReviews,
-      price: product.subProducts[0]?.price || 0, // Adjust to match your pricing structure
-      originalPrice: product.subProducts[0]?.originalPrice || 0, // Add logic for original price
+      price: product.subProducts[0]?.price || 0,
+      originalPrice: product.subProducts[0]?.originalPrice || 0,
       discount: product.subProducts[0]?.discount || 0,
       isBestseller: product.featured,
-      isSale: product.subProducts[0]?.isSale || false, // Adjust if you have sale logic
+      isSale: product.subProducts[0]?.isSale || false,
       slug: product.slug,
       prices: product.subProducts[0]?.sizes
         .map((s: any) => {

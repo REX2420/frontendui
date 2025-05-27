@@ -1,6 +1,5 @@
 "use client";
-import useEmblaCarousel from "embla-carousel-react";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star } from "lucide-react";
 import React from "react";
 import { CiInstagram } from "react-icons/ci";
 
@@ -29,66 +28,66 @@ const reviews = [
     rating: 5,
     text: "Discovered my signature fragrance with VIBECART. The meticulous craftsmanship in their perfumes is truly impressive.",
   },
+  {
+    id: 4,
+    name: "Priya Sharma",
+    instagram: "priya_sharma_01",
+    image: "https://placehold.co/200x200",
+    rating: 5,
+    text: "Love the variety and quality of fragrances. VIBECART has become my go-to for all perfume needs.",
+  },
+  {
+    id: 5,
+    name: "Arjun Singh",
+    instagram: "arjun_singh_99",
+    image: "https://placehold.co/200x200",
+    rating: 5,
+    text: "Exceptional customer service and premium quality products. Highly recommend VIBECART to everyone.",
+  },
+  {
+    id: 6,
+    name: "Neha Gupta",
+    instagram: "neha_gupta_22",
+    image: "https://placehold.co/200x200",
+    rating: 5,
+    text: "The fragrances last all day and the packaging is beautiful. VIBECART exceeded my expectations.",
+  },
 ];
+
 const ReviewSection = () => {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  const scrollPrev = React.useCallback(() => {
-    if (emblaApi) emblaApi.scrollPrev();
-  }, [emblaApi]);
-  const scrollNext = React.useCallback(() => {
-    if (emblaApi) emblaApi.scrollNext();
-  }, [emblaApi]);
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-8">
-      <h2 className="mb-12 heading text-center">
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      <h2 className="mb-8 heading text-center">
         WHAT OUR CUSTOMERS HAVE TO SAY
       </h2>
-      <div className="relative">
-        <div className="overflow-hidden" ref={emblaRef}>
-          <div className="flex">
-            {reviews.map((review) => (
-              <div key={review.id} className="flex-[0_0_100%] min-w-0  px-4">
-                <div className="bg-card text-card-foreground rounded-lg p-6 flex flex-col items-center border border-border">
-                  <img
-                    src={review.image}
-                    alt={`${review.name}'s profile`}
-                    className="w-24 h-24 rounded-full mb-6 object-cover "
-                  />
-                  <div className="flex mb-4">
-                    {[...Array(5)].map((_, index: number) => (
-                      <Star
-                        key={index}
-                        className={`w-6 h-6 ${
-                          index < review.rating
-                            ? "text-yellow-400 fill-current"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-center mb-6 text-lg">{review.text}</p>
-                  <p className="font-semibold text-xl mb-1">{review.name}</p>
-                  <p className="text-muted-foreground flex justify-center items-center gap-0">
-                    <CiInstagram size={15} />
-                    {review.instagram}
-                  </p>
-                </div>
-              </div>
-            ))}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+        {reviews.map((review) => (
+          <div key={review.id} className="bg-card text-card-foreground rounded-lg p-3 sm:p-4 flex flex-col items-center border border-border">
+            <img
+              src={review.image}
+              alt={`${review.name}'s profile`}
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-3 object-cover"
+            />
+            <div className="flex mb-2">
+              {[...Array(5)].map((_, index: number) => (
+                <Star
+                  key={index}
+                  className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                    index < review.rating
+                      ? "text-yellow-400 fill-current"
+                      : "text-muted-foreground"
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-center mb-3 text-xs sm:text-sm line-clamp-3">{review.text}</p>
+            <p className="font-semibold text-xs sm:text-sm mb-1 text-center">{review.name}</p>
+            <p className="text-muted-foreground flex justify-center items-center gap-1 text-xs">
+              <CiInstagram size={12} />
+              <span className="truncate">{review.instagram}</span>
+            </p>
           </div>
-        </div>
-        <button
-          onClick={scrollPrev}
-          className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-background/80 hover:bg-background border border-border text-foreground rounded-full p-2 transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <button
-          onClick={scrollNext}
-          className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-background/80 hover:bg-background border border-border text-foreground rounded-full p-2 transition-colors"
-        >
-          <ChevronRight className="w-6 h-6" />
-        </button>
+        ))}
       </div>
     </div>
   );
