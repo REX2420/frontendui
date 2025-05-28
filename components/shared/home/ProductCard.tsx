@@ -29,7 +29,7 @@ const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-auto object-cover mb-4 transition-transform duration-700 ease-in-out transform group-hover:scale-110 rounded-[10px]"
+            className="w-full h-48 object-cover mb-4 transition-transform duration-700 ease-in-out transform group-hover:scale-110 rounded-[10px]"
           />
         </Link>
         <div className="absolute top-2 left-2 flex gap-2">

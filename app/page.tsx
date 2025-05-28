@@ -6,7 +6,6 @@ import CrazyDeals from "@/components/shared/home/CrazyDeals";
 import FeaturedProducts from "@/components/shared/home/FeaturedProducts";
 import NeedOfWebsite from "@/components/shared/home/NeedOfWebsite";
 import ProductCard from "@/components/shared/home/ProductCard";
-import ReviewSection from "@/components/shared/home/ReviewSection";
 import SpecialCombos from "@/components/shared/home/SpecialCombos";
 import { fetchAllWebsiteBanners, fetchAllAppBanners } from "@/lib/database/actions/banners.actions";
 import {
@@ -110,7 +109,6 @@ const HomePage = async () => {
         heading="NEW ARRIVALS"
         products={transformedNewArrivalProducts}
       />
-      <ReviewSection />
       <BlogSection />
     </div>
   );

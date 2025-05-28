@@ -21,7 +21,7 @@ const SpecialCombos = ({ comboData }: { comboData: SpecialComboDataType }) => {
               <img
                 src={combo.images[0].url}
                 alt={combo.title}
-                className="w-full h-auto object-cover"
+                className="w-full h-48 object-cover rounded-lg"
               />
               <p className="text-center uppercase textGap font-[500]">
                 {combo.title}

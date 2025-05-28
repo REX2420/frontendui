@@ -13,7 +13,7 @@ const CategorySection = ({ subCategories }: { subCategories: any[] }) => {
               <img
                 src={category.images[0].url}
                 alt={category.name}
-                className="w-full h-auto object-cover"
+                className="w-full h-32 object-cover rounded-lg"
               />
             </div>
             <span className="text-sm font-medium text-center">

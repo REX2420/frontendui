@@ -95,7 +95,7 @@ const ProductPage = async ({
       </Marquee>
       <div className="max-w-7xl ownContainer pb-6 px-6 pt-2">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 mb-[20px] ">
-          <div className="w-full lg:w-1/2 lg:sticky top-[1rem] self-start">
+          <div className="w-full lg:w-1/2">
             <Carousel className="w-full">
               <CarouselContent>
                 {images.map((imgSrc: string, index: number) => (
@@ -104,7 +104,7 @@ const ProductPage = async ({
                       <img
                         src={imgSrc}
                         alt={`Product Image ${index + 1}`}
-                        className="w-full sticky h-auto object-cover"
+                        className="w-full h-[500px] object-cover rounded-[10px]"
                       />
                     </div>
                   </CarouselItem>
