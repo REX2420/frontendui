@@ -35,15 +35,15 @@ const aj = arcjet({
   rules: [
     // Protect against common attacks with Arcjet Shield
     shield({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
+      mode: "DRY_RUN", // Changed to DRY_RUN to log only and not block requests
     }),
     fixedWindow({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
+      mode: "DRY_RUN", // Changed to DRY_RUN to log only and not block requests
       window: "60s", // 60 second fixed window
-      max: 500, // allow a maximum of 100 requests
+      max: 500, // allow a maximum of 500 requests
     }),
     detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
+      mode: "DRY_RUN", // Changed to DRY_RUN to log only and not block requests
       // Block all bots except the following
       allow: [
         "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc

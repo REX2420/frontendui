@@ -1,6 +1,6 @@
 // ISR(CACHE) - 1 HOUR
 import BannerCarousel from "@/components/shared/home/BannerCarousel";
-import BlogImages from "@/components/shared/home/BlogImages";
+import BlogSection from "@/components/shared/home/BlogImages";
 import CategorySection from "@/components/shared/home/CategorySection";
 import CrazyDeals from "@/components/shared/home/CrazyDeals";
 import FeaturedProducts from "@/components/shared/home/FeaturedProducts";
@@ -111,7 +111,7 @@ const HomePage = async () => {
         products={transformedNewArrivalProducts}
       />
       <ReviewSection />
-      <BlogImages />
+      <BlogSection />
     </div>
   );
 };
