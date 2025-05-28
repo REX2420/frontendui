@@ -224,7 +224,7 @@ export default function MyProfileComponent() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              ₹{order.total.toFixed(2)}
+                              MVR{order.total.toFixed(2)}
                             </p>
                             <Link
                               href={`/order/${order.id}`}

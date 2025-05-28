@@ -141,7 +141,7 @@ const CartDrawer = () => {
             >
               {loading
                 ? "Loading..."
-                : `Continue to Secure Checkout - ₹${total}`}
+                : `Continue to Secure Checkout - MVR${total}`}
               <FaArrowCircleRight />
             </Button>
           </div>

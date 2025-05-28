@@ -163,7 +163,7 @@ export const getSingleProduct = unstable_cache(
         }),
         priceRange:
           prices.length > 1 &&
-          `From ₹${prices[0]} to ₹${prices[prices.length - 1]}`,
+          `From MVR${prices[0]} to MVR${prices[prices.length - 1]}`,
         price:
           subProduct.discount > 0
             ? (

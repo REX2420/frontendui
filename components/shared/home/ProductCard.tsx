@@ -73,12 +73,12 @@ const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
       <div className="flex items-center gap-2 mb-4">
         <span className="font-semibold text-[13px] sm:text-sm">
           {product.prices.length === 1
-            ? `₹${
+            ? `MVR${
                 product.prices[0] - (product.prices[0] * product.discount) / 100
               }`
-            : `From ₹${
+            : `From MVR${
                 product.prices[0] - (product.prices[0] * product.discount) / 100
-              } to ₹${
+              } to MVR${
                 product.prices[product.prices.length - 1] -
                 (product.prices[product.prices.length - 1] * product.discount) /
                   100

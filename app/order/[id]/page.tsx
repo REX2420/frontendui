@@ -71,7 +71,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                 </div>
                 <div className="w-full sm:w-1/2 md:w-1/4 p-4">
                   <div className="font-semibold text-sm mb-1">TOTAL:</div>
-                  <div>₹{orderData?.orderData.total}</div>
+                  <div>MVR{orderData?.orderData.total}</div>
                 </div>
               </div>
               <div className="border-t p-4">
@@ -134,7 +134,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                         : `${orderData?.orderData.products.length} Item`}
                     </span>
                     <span className="font-medium">
-                      ₹ {orderData?.orderData.total}
+                      MVR {orderData?.orderData.total}
                     </span>
                   </div>
                   {orderData?.orderData.products.map(
@@ -153,7 +153,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                             </p>
                             <div className="flex items-center mt-1">
                               <span className="font-medium mr-2">
-                                ₹{item.price} * {item.qty} = ₹
+                                MVR{item.price} * {item.qty} = MVR
                                 {item.price * item.qty}
                               </span>
                             </div>
@@ -175,7 +175,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                     <div className="flex items-center">
                       <CheckCircle2 className="w-6 h-6 text-green-500 mr-2" />
                       <span className="text-green-700">
-                        Yay! You have saved ₹
+                        Yay! You have saved MVR
                         {orderData?.orderData.totalSaved +
                           (orderData?.orderData.totalBeforeDiscount -
                             orderData?.orderData.total)}{" "}
@@ -191,14 +191,14 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                     <div className="flex justify-between">
                       <span>Total MRP</span>
                       <span>
-                        ₹
+                        MVR
                         {orderData?.orderData.totalBeforeDiscount +
                           orderData?.orderData.totalSaved}
                       </span>
                     </div>
                     <div className="flex justify-between text-green-600">
                       <span>Product Discount</span>
-                      <span>- ₹{orderData?.orderData.totalSaved}</span>
+                      <span>- MVR{orderData?.orderData.totalSaved}</span>
                     </div>
                     {orderData?.orderData.totalBeforeDiscount -
                       orderData?.orderData.total >
@@ -208,7 +208,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                           Coupon Discount ({orderData?.orderData.couponApplied})
                         </span>
                         <span>
-                          - ₹
+                          - MVR
                           {orderData?.orderData.totalBeforeDiscount -
                             orderData?.orderData.total}
                         </span>
@@ -217,7 +217,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
 
                     <div className="flex justify-between font-semibold pt-2 border-t border-t-black">
                       <span>Subtotal</span>
-                      <span>₹{orderData?.orderData.total.toFixed(2)}</span>
+                      <span>MVR{orderData?.orderData.total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

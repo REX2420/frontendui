@@ -1,12 +1,7 @@
 // ISR(CACHE) - 30 MINUTES
 
 import React from "react";
-import { Star, Minus, Plus, Clock, Award, Droplet, MapPin } from "lucide-react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+import { Star, Minus, Plus } from "lucide-react";
 import Marquee from "react-fast-marquee";
 import ProductReviewComponent from "@/components/shared/product/ProductReviewComponent";
 import ProductDetailsAccordian from "@/components/shared/product/ProductDetailsAccordian";
@@ -21,6 +16,7 @@ import AddtoCartButton from "@/components/shared/product/AddtoCart";
 import ProductCard from "@/components/shared/home/ProductCard";
 import { redirect } from "next/navigation";
 import IdInvalidError from "@/components/shared/IdInvalidError";
+import ProductImageGallery from "../../../components/shared/product/ProductImageGallery";
 
 // generate meta data coming from database
 export async function generateMetadata({
@@ -90,27 +86,13 @@ const ProductPage = async ({
           🎁 Buy Any 3 products and get 1 gift for free
         </p>
         <p className="para mx-4">
-          1 Body wash cleanser + 5 SKINCARE PRODUCTS @ ₹1500
+          1 Body wash cleanser + 5 SKINCARE PRODUCTS @ MVR1500
         </p>
       </Marquee>
       <div className="max-w-7xl ownContainer pb-6 px-6 pt-2">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 mb-[20px] ">
           <div className="w-full lg:w-1/2">
-            <Carousel className="w-full">
-              <CarouselContent>
-                {images.map((imgSrc: string, index: number) => (
-                  <CarouselItem key={index}>
-                    <div className="p-1">
-                      <img
-                        src={imgSrc}
-                        alt={`Product Image ${index + 1}`}
-                        className="w-full h-[500px] object-cover rounded-[10px]"
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
+            <ProductImageGallery images={images} productName={product.name} />
           </div>
           <div className="w-full lg:w-1/2 space-y-4">
             <h1 className="text-2xl lg:subHeading">{product.name}</h1>
@@ -142,14 +124,14 @@ const ProductPage = async ({
               <div className="mb-4 lg:mb-0">
                 <div className="flex items-baseline gap-2 ">
                   <span className="text-2xl lg:text-3xl font-bold text-[#FA6338]">
-                    ₹{product.price}
+                    MVR{product.price}
                   </span>
                   <span className="text-2xl lg:text-3xl font-bold text-green-500">
-                    ₹{product.price}
+                    MVR{product.price}
                   </span>
                   <span>M.R.P:</span>
                   <span className="text-lg text-gray-500 line-through">
-                    ₹{product.priceBefore.toFixed(2)}
+                    MVR{product.priceBefore.toFixed(2)}
                   </span>
                   {product.discount > 0 && (
                     <span className="text-red-500 font-semibold">
@@ -198,30 +180,11 @@ const ProductPage = async ({
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-              {[
-                { icon: Clock, text: "LONG-LASTING" },
-                { icon: Award, text: "CERTIFIED" },
-                { icon: Droplet, text: "QUALITY CHECKED OILS" },
-                { icon: MapPin, text: "MADE IN INDIA" },
-              ].map(({ icon: Icon, text }, index) => (
-                <div
-                  className="flex flex-col items-center text-center bg-gray-100 px-1 py-8 justify-center"
-                  key={index}
-                >
-                  <div className="rounded-full">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="text-xs mt-2">{text}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
         <ProductDetailsAccordian
           description={product.longDescription}
           keyBenefits={product.benefits}
-          ingredients={product.ingredients}
           details={product.details}
         />
         <ProductReviewComponent

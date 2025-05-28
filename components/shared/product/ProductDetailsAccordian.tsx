@@ -8,12 +8,10 @@ import {
 const ProductDetailsAccordian = ({
   description,
   keyBenefits,
-  ingredients,
   details,
 }: {
   description: string;
   keyBenefits: any[];
-  ingredients: any[];
   details: any[];
 }) => {
   return (
@@ -42,23 +40,8 @@ const ProductDetailsAccordian = ({
           </AccordionItem>
         )}
 
-        {ingredients.length > 0 && (
-          <AccordionItem value="item-3">
-            <AccordionTrigger className="uppercase subHeading tracking-[1px]">
-              Ingredients
-            </AccordionTrigger>
-            <AccordionContent>
-              {ingredients.map((i, index) => (
-                <div className="" key={index}>
-                  {i.name}
-                </div>
-              ))}
-            </AccordionContent>
-          </AccordionItem>
-        )}
-
         {details.length > 0 && (
-          <AccordionItem value="item-4">
+          <AccordionItem value="item-3">
             <AccordionTrigger className="uppercase subHeading tracking-[1px]">
               Details
             </AccordionTrigger>
