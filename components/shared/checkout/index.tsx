@@ -71,9 +71,17 @@ export default function CheckoutComponent() {
   useEffect(() => {
     if (userId) {
       getSavedCartForUser(userId).then((res) => {
-        setData(res?.cart);
-        setUser(res?.user);
-        setAddress(res?.address);
+        if (res?.success) {
+          setData(res?.cart);
+          setUser(res?.user);
+          setAddress(res?.address);
+        } else {
+          console.error("Failed to load checkout data:", res?.message);
+          toast.error(res?.message || "Failed to load checkout data");
+        }
+      }).catch((error) => {
+        console.error("Error loading checkout data:", error);
+        toast.error("Failed to load checkout data. Please try again.");
       });
     }
   }, [userId]);

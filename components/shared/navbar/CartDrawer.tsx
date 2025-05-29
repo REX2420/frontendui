@@ -26,6 +26,7 @@ import {
 import { FaArrowCircleRight } from "react-icons/fa";
 import { handleError } from "@/lib/utils";
 import CartSheetItems from "../cart/CartSheetItems";
+import { toast } from "sonner";
 
 const CartDrawer = () => {
   const router = useRouter();
@@ -76,14 +77,55 @@ const CartDrawer = () => {
     if (userId && userId !== null) {
       setLoading(true);
 
-      await saveCartForUser(cart, userId)
-        .then((res) => {
-          if (res?.success) {
-            setLoading(false);
-            router.replace("/checkout");
-          }
-        })
-        .catch((err) => console.log(err));
+      try {
+        // Debug: Log cart data before sending
+        console.log("Cart data before saving:", cart);
+        console.log("User ID:", userId);
+        
+        // Validate cart data
+        if (!cart || cart.length === 0) {
+          toast.error("Your cart is empty");
+          return;
+        }
+        
+        // Check if cart items have required fields
+        const invalidItems = cart.filter((item: any) => 
+          !item._id || !item.size || !item.qty || item.qty <= 0
+        );
+        
+        if (invalidItems.length > 0) {
+          console.error("Invalid cart items:", invalidItems);
+          toast.error("Some items in your cart are invalid. Please refresh and try again.");
+          return;
+        }
+        
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise<{ success: boolean; message: string }>((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 30000)
+        );
+        
+        const res = await Promise.race([
+          saveCartForUser(cart, userId),
+          timeoutPromise
+        ]) as { success: boolean; message?: string };
+        
+        if (res?.success) {
+          toast.success("Cart saved successfully!");
+          router.replace("/checkout");
+        } else {
+          console.error("Cart save failed:", res?.message);
+          toast.error(res?.message || "Failed to save cart. Please try again.");
+        }
+      } catch (error: any) {
+        console.error("Cart save error:", error);
+        if (error.message === 'Request timeout') {
+          toast.error("Request timed out. Please check your connection and try again.");
+        } else {
+          toast.error("Something went wrong. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
     } else {
       router.push("/sign-in?next=checkout");
     }

@@ -10,62 +10,126 @@ import Cart from "../models/cart.model";
 export async function saveCartForUser(cart: any, clerkId: string) {
   try {
     await connectToDatabase();
+    
+    if (!cart || cart.length === 0) {
+      return { success: false, message: "Cart is empty" };
+    }
+    
+    if (!clerkId) {
+      return { success: false, message: "User not authenticated" };
+    }
+    
     let products = [];
     let user = await User.findOne({ clerkId });
+    
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+    
+    // Delete existing cart
     await Cart.deleteOne({ user: user._id });
 
     for (let i = 0; i < cart.length; i++) {
-      let dbProduct: any = await Product.findById(cart[i]._id).lean();
-      let subProduct = dbProduct.subProducts[cart[i].style];
-      let tempProduct: any = {};
-      tempProduct.name = dbProduct.name;
-      tempProduct.product = dbProduct._id;
-      tempProduct.color = {
-        color: cart[i].color.color,
-        image: cart[i].color.image,
-      };
-      tempProduct.image = subProduct.images[0].url;
-      tempProduct.qty = Number(cart[i].qty);
-      tempProduct.size = cart[i].size;
-      tempProduct.vendor = cart[i].vendor ? cart[i].vendor : {};
-      tempProduct.vendorId =
-        cart[i].vendor && cart[i].vendor._id ? cart[i].vendor._id : "";
+      try {
+        let dbProduct: any = await Product.findById(cart[i]._id).lean();
+        
+        if (!dbProduct) {
+          console.warn(`Product not found: ${cart[i]._id}`);
+          continue; // Skip this product instead of failing entirely
+        }
+        
+        if (!dbProduct.subProducts || !dbProduct.subProducts[cart[i].style]) {
+          console.warn(`SubProduct not found for style: ${cart[i].style}`);
+          continue;
+        }
+        
+        let subProduct = dbProduct.subProducts[cart[i].style];
+        
+        if (!subProduct.sizes) {
+          console.warn(`No sizes found for product: ${cart[i]._id}`);
+          continue;
+        }
+        
+        let sizeData = subProduct.sizes.find((p: any) => p.size == cart[i].size);
+        if (!sizeData) {
+          console.warn(`Size not found: ${cart[i].size} for product: ${cart[i]._id}`);
+          continue;
+        }
+        
+        let tempProduct: any = {};
+        tempProduct.name = dbProduct.name;
+        tempProduct.product = dbProduct._id;
+        tempProduct.color = {
+          color: cart[i].color?.color || "",
+          image: cart[i].color?.image || "",
+        };
+        tempProduct.image = subProduct.images?.[0]?.url || "";
+        tempProduct.qty = Number(cart[i].qty);
+        tempProduct.size = cart[i].size;
+        tempProduct.vendor = cart[i].vendor ? cart[i].vendor : {};
+        tempProduct.vendorId =
+          cart[i].vendor && cart[i].vendor._id ? cart[i].vendor._id : "";
 
-      let price = Number(
-        subProduct.sizes.find((p: any) => p.size == cart[i].size).price
-      );
-      tempProduct.price =
-        subProduct.discount > 0
-          ? (price - (price * Number(subProduct.discount)) / 100).toFixed(2)
-          : price.toFixed(2);
-      products.push(tempProduct);
+        let price = Number(sizeData.price);
+        tempProduct.price =
+          subProduct.discount > 0
+            ? (price - (price * Number(subProduct.discount)) / 100).toFixed(2)
+            : price.toFixed(2);
+        products.push(tempProduct);
+      } catch (productError) {
+        console.error(`Error processing product ${cart[i]._id}:`, productError);
+        continue; // Skip this product instead of failing entirely
+      }
     }
+    
+    if (products.length === 0) {
+      return { success: false, message: "No valid products found in cart" };
+    }
+    
     let cartTotal = 0;
     for (let i = 0; i < products.length; i++) {
-      cartTotal = cartTotal + products[i].price * products[i].qty;
+      cartTotal = cartTotal + Number(products[i].price) * products[i].qty;
     }
+    
     await new Cart({
       products,
       cartTotal: cartTotal.toFixed(2),
       user: user._id,
     }).save();
-    return { success: true };
+    
+    return { success: true, message: "Cart saved successfully" };
   } catch (error) {
+    console.error("Error in saveCartForUser:", error);
     handleError(error);
+    return { success: false, message: "Failed to save cart to database" };
   }
 }
 export async function getSavedCartForUser(clerkId: string) {
   try {
     await connectToDatabase();
+    
+    if (!clerkId) {
+      return { success: false, message: "User not authenticated" };
+    }
+    
     const user = await User.findOne({ clerkId });
+    
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+    
     const cart = await Cart.findOne({ user: user._id });
+    
     return {
+      success: true,
       user: JSON.parse(JSON.stringify(user)),
       cart: JSON.parse(JSON.stringify(cart)),
-      address: JSON.parse(JSON.stringify(user.address)),
+      address: JSON.parse(JSON.stringify(user.address || {})),
     };
   } catch (error) {
+    console.error("Error in getSavedCartForUser:", error);
     handleError(error);
+    return { success: false, message: "Failed to retrieve cart data" };
   }
 }
 
