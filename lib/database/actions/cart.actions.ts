@@ -87,7 +87,7 @@ export async function updateCartForUser(products: any) {
         priceBefore: originalPrice,
         price:
           discount > 0
-            ? originalPrice - originalPrice / discount
+            ? originalPrice - (originalPrice * discount) / 100
             : originalPrice,
         discount,
         quantity,
