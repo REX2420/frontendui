@@ -11,23 +11,25 @@ export async function saveCartForUser(cart: any, clerkId: string) {
   try {
     await connectToDatabase();
     
-    if (!cart || cart.length === 0) {
-      return { success: false, message: "Cart is empty" };
-    }
-    
     if (!clerkId) {
       return { success: false, message: "User not authenticated" };
     }
     
-    let products = [];
     let user = await User.findOne({ clerkId });
     
     if (!user) {
       return { success: false, message: "User not found" };
     }
     
-    // Delete existing cart
+    // Always delete existing cart first
     await Cart.deleteOne({ user: user._id });
+
+    // If cart is empty, just delete and return success (user cleared their cart)
+    if (!cart || cart.length === 0) {
+      return { success: true, message: "Empty cart saved (cart cleared)" };
+    }
+    
+    let products = [];
 
     for (let i = 0; i < cart.length; i++) {
       try {
@@ -83,7 +85,7 @@ export async function saveCartForUser(cart: any, clerkId: string) {
     }
     
     if (products.length === 0) {
-      return { success: false, message: "No valid products found in cart" };
+      return { success: true, message: "Empty cart saved (no valid products)" };
     }
     
     let cartTotal = 0;
@@ -104,32 +106,115 @@ export async function saveCartForUser(cart: any, clerkId: string) {
     return { success: false, message: "Failed to save cart to database" };
   }
 }
+
+// Convert database cart format to frontend cart format
+export async function convertDbCartToFrontendFormat(dbCart: any): Promise<any[]> {
+  try {
+    if (!dbCart || !dbCart.products || dbCart.products.length === 0) {
+      return [];
+    }
+
+    const frontendCartItems: any[] = [];
+
+    for (const dbProduct of dbCart.products) {
+      try {
+        // Get the full product details from database
+        const fullProduct: any = await Product.findById(dbProduct.product).lean();
+        
+        if (!fullProduct || !fullProduct.subProducts) {
+          console.warn(`Product not found or missing subProducts: ${dbProduct.product}`);
+          continue;
+        }
+
+        // Find the right style based on the stored data
+        let subProductIndex = 0;
+        let subProduct = fullProduct.subProducts[subProductIndex];
+        
+        // Try to find the matching subProduct based on color or image
+        if (dbProduct.color && dbProduct.color.color) {
+          const matchingIndex = fullProduct.subProducts.findIndex((sp: any) => 
+            sp.color && sp.color.color === dbProduct.color.color
+          );
+          if (matchingIndex !== -1) {
+            subProductIndex = matchingIndex;
+            subProduct = fullProduct.subProducts[matchingIndex];
+          }
+        }
+
+        if (!subProduct || !subProduct.sizes) {
+          console.warn(`SubProduct or sizes not found for product: ${dbProduct.product}`);
+          continue;
+        }
+
+        // Find the size data
+        const sizeData = subProduct.sizes.find((s: any) => s.size === dbProduct.size);
+        if (!sizeData) {
+          console.warn(`Size ${dbProduct.size} not found for product: ${dbProduct.product}`);
+          continue;
+        }
+
+        // Create the frontend cart item format
+        const frontendItem = {
+          _id: fullProduct._id.toString(),
+          _uid: `${fullProduct._id}_${subProductIndex}_${dbProduct.size}`,
+          name: fullProduct.name,
+          price: parseFloat(dbProduct.price),
+          qty: parseInt(dbProduct.qty),
+          size: dbProduct.size,
+          images: subProduct.images || [],
+          quantity: sizeData.qty,
+          discount: subProduct.discount || 0,
+          style: subProductIndex,
+          color: dbProduct.color || { color: "", image: "" },
+          vendor: dbProduct.vendor || {},
+        };
+
+        frontendCartItems.push(frontendItem);
+      } catch (itemError) {
+        console.error(`Error converting cart item:`, itemError);
+        continue;
+      }
+    }
+
+    return frontendCartItems;
+  } catch (error) {
+    console.error("Error converting cart format:", error);
+    return [];
+  }
+}
+
 export async function getSavedCartForUser(clerkId: string) {
   try {
     await connectToDatabase();
     
     if (!clerkId) {
-      return { success: false, message: "User not authenticated" };
+      return { success: false, message: "User not authenticated", cartItems: [] };
     }
     
     const user = await User.findOne({ clerkId });
     
     if (!user) {
-      return { success: false, message: "User not found" };
+      return { success: false, message: "User not found", cartItems: [] };
     }
     
     const cart = await Cart.findOne({ user: user._id });
+    
+    let cartItems: any[] = [];
+    if (cart && cart.products) {
+      cartItems = await convertDbCartToFrontendFormat(cart);
+    }
     
     return {
       success: true,
       user: JSON.parse(JSON.stringify(user)),
       cart: JSON.parse(JSON.stringify(cart)),
+      cartItems: cartItems,
       address: JSON.parse(JSON.stringify(user.address || {})),
     };
   } catch (error) {
     console.error("Error in getSavedCartForUser:", error);
     handleError(error);
-    return { success: false, message: "Failed to retrieve cart data" };
+    return { success: false, message: "Failed to retrieve cart data", cartItems: [] };
   }
 }
 

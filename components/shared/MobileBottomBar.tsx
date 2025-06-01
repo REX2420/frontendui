@@ -8,9 +8,16 @@ import {
   cartMenuState,
   accountMenuState,
 } from "./navbar/store";
+import { useAuth } from "@clerk/nextjs";
+import { useCartStore } from "@/store/cart";
 
 const MobileBottomBar = () => {
   const pathname = usePathname();
+  const { isSignedIn } = useAuth();
+  
+  const getCartItemCount = useCartStore((state: any) => state.getCartItemCount);
+  const isAuthenticated = useCartStore((state: any) => state.isAuthenticated);
+  
   const [hamMenuOpen, setHamMenuOpen] = useAtom(hamburgerMenuState, {
     store: useStore(),
   });
@@ -80,19 +87,24 @@ const MobileBottomBar = () => {
         </Link>
         <button
           onClick={handleOnClickCartMenu}
-          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 relative ${
             cartMenuOpen
               ? "text-orange-500"
               : "text-muted-foreground hover:text-orange-500"
           }`}
         >
           <ShoppingBag size={22} />
+          {isSignedIn && isAuthenticated && getCartItemCount() > 0 && (
+            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-orange-500 rounded-full min-w-[18px]">
+              {getCartItemCount()}
+            </span>
+          )}
           <span className="text-xs mt-1 font-medium">Cart</span>
         </button>
         <button
           onClick={handleOnClickAccountMenu}
           className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
-            accountMenuOpen || isActive("/profile") || isActive("/account")
+            accountMenuOpen
               ? "text-orange-500"
               : "text-muted-foreground hover:text-orange-500"
           }`}

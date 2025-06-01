@@ -30,17 +30,17 @@ import { toast } from "sonner";
 
 const CartDrawer = () => {
   const router = useRouter();
-  const { userId } = useAuth();
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-  }, []);
+  const { userId, isSignedIn } = useAuth();
+  
   const [cartMenuOpen, setCartMenuOpen] = useAtom(cartMenuState, {
     store: useStore(),
   });
+  
   const handleOnClickCartMenu = () => {
     setCartMenuOpen(true);
     console.log("cart", cartMenuOpen);
   };
+  
   interface CartItem {
     id: string;
     name: string;
@@ -48,7 +48,10 @@ const CartDrawer = () => {
     quantity: number;
     image: string;
   }
+  
   const cart = useCartStore((state: any) => state.cart.cartItems);
+  const isAuthenticated = useCartStore((state: any) => state.isAuthenticated);
+  const getCartItemCount = useCartStore((state: any) => state.getCartItemCount);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -65,16 +68,18 @@ const CartDrawer = () => {
         handleError(error);
       }
     };
-    if (cart.length > 0) {
+    if (cart.length > 0 && isSignedIn && isAuthenticated) {
       update();
     }
-  }, [cart.length > 0]);
+  }, [cart.length > 0, isSignedIn, isAuthenticated]);
+  
   const total = cart.reduce(
     (sum: any, item: any) => sum + parseFloat(item.price) * item.qty,
     0
   );
+  
   const saveCartToDbHandler = async () => {
-    if (userId && userId !== null) {
+    if (userId && userId !== null && isAuthenticated) {
       setLoading(true);
 
       try {
@@ -130,6 +135,7 @@ const CartDrawer = () => {
       router.push("/sign-in?next=checkout");
     }
   };
+
   return (
     <div className="relative">
       <Sheet open={cartMenuOpen}>
@@ -142,7 +148,7 @@ const CartDrawer = () => {
           >
             <ShoppingBag size={24} />
             <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-primary-foreground bg-primary rounded-full">
-              {cart.length}
+              {getCartItemCount()}
             </span>
           </Button>
         </SheetTrigger>
@@ -151,7 +157,35 @@ const CartDrawer = () => {
             <SheetTitle className="subHeading">CART</SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4">
-            {cart.length === 0 ? (
+            {!isSignedIn || !isAuthenticated ? (
+              // Show login message for unauthenticated users
+              <div className="flex justify-center h-[80vh] items-center">
+                <div className="text-center space-y-4">
+                  <div className="mb-6">
+                    <ShoppingBag size={64} className="mx-auto text-gray-400 mb-4" />
+                    <h1 className="text-2xl font-bold text-gray-700 mb-2">
+                      Please login to see the cart items
+                    </h1>
+                    <p className="text-gray-500 text-sm">
+                      Sign in to view your saved items and enjoy a personalized shopping experience
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <Link href="/sign-in">
+                      <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/sign-up">
+                      <Button variant="outline" className="w-full">
+                        Create Account
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : cart.length === 0 ? (
+              // Show empty cart for authenticated users
               <div className="flex justify-center h-[80vh] items-center">
                 <div className="">
                   <h1 className="text-2xl mb-[10px] text-center flex items-center justify-center  font-bold ">
@@ -167,26 +201,29 @@ const CartDrawer = () => {
                 </div>
               </div>
             ) : (
+              // Show cart items for authenticated users
               cart.map((product: any) => (
                 <CartSheetItems product={product} key={product._uid} />
               ))
             )}
           </div>
-          <div className="absolute bottom-2 w-[90%] mt-6 bg-background">
-            <p className="text-sm text-muted-foreground">
-              Tax included. Shipping calculated at checkout.
-            </p>
-            <Button
-              onClick={() => saveCartToDbHandler()}
-              disabled={cart.length === 0}
-              className="w-full mt-4 gap-[10px]"
-            >
-              {loading
-                ? "Loading..."
-                : `Continue to Secure Checkout - MVR${total}`}
-              <FaArrowCircleRight />
-            </Button>
-          </div>
+          {isSignedIn && isAuthenticated && cart.length > 0 && (
+            <div className="absolute bottom-2 w-[90%] mt-6 bg-background">
+              <p className="text-sm text-muted-foreground">
+                Tax included. Shipping calculated at checkout.
+              </p>
+              <Button
+                onClick={() => saveCartToDbHandler()}
+                disabled={cart.length === 0}
+                className="w-full mt-4 gap-[10px]"
+              >
+                {loading
+                  ? "Loading..."
+                  : `Continue to Secure Checkout - MVR${total}`}
+                <FaArrowCircleRight />
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>

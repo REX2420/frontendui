@@ -1,17 +1,22 @@
 import { useCartStore } from "@/store/cart";
 import { Minus, Plus, X } from "lucide-react";
-import React, { useEffect } from "react";
+import React from "react";
 import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
 
 const CartSheetItems = ({ product }: { product: any }) => {
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-  }, []);
-  const { updateCart } = useCartStore();
+  const { isSignedIn, userId } = useAuth();
+  
+  const updateCart = useCartStore((state: any) => state.updateCart);
   const cart = useCartStore((state: any) => state.cart.cartItems);
 
-  const updateQty = (type: string) => {
-    let newCart = cart.map((p: any) => {
+  const updateQty = async (type: string) => {
+    if (!isSignedIn) {
+      toast.error("Please login to modify cart items");
+      return;
+    }
+
+    const newCart = cart.map((p: any) => {
       if (p._uid == product._uid) {
         return {
           ...p,
@@ -20,13 +25,21 @@ const CartSheetItems = ({ product }: { product: any }) => {
       }
       return p;
     });
+    
     updateCart(newCart);
     toast.success("Cart updated successfully");
   };
-  const removeProduct = (id: string) => {
-    let newCart = cart.filter((p: any) => {
+  
+  const removeProduct = async (id: string) => {
+    if (!isSignedIn) {
+      toast.error("Please login to remove cart items");
+      return;
+    }
+
+    const newCart = cart.filter((p: any) => {
       return p._uid != id;
     });
+    
     updateCart(newCart);
     toast.success("Item deleted successfully");
   };
@@ -62,17 +75,17 @@ const CartSheetItems = ({ product }: { product: any }) => {
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center">
               <button
-                disabled={product.qty < 2}
+                disabled={product.qty < 2 || !isSignedIn}
                 onClick={() => updateQty("minus")}
-                className=""
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Minus className="w-4 h-4" />
               </button>
               <span className="mx-2">{product.qty}</span>
               <button
-                disabled={product.qty == product.quantity}
+                disabled={product.qty == product.quantity || !isSignedIn}
                 onClick={() => updateQty("plus")}
-                className="px-1"
+                className="px-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -86,7 +99,8 @@ const CartSheetItems = ({ product }: { product: any }) => {
         <div className="text-right">
           <button
             onClick={() => removeProduct(product._uid)}
-            className="text-gray-500 hover:text-gray-700"
+            disabled={!isSignedIn}
+            className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-4 h-4" />
           </button>
