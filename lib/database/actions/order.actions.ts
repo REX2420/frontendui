@@ -176,15 +176,18 @@ export async function createStripeOrder(
     line_items: lineItems,
     success_url:
       process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/order/${newOrder._id}`
-        : `https://vibecart-alpha.vercel.app/order/${newOrder._id}`,
+        ? `http://localhost:3000/order/${newOrder._id}?success=true`
+        : `https://vibecart-alpha.vercel.app/order/${newOrder._id}?success=true`,
     cancel_url:
       process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/payment/cancel`
-        : `https://vibecart-alpha.vercel.app/payment/cancel`,
+        ? `http://localhost:3000/payment/cancel?canceled=true`
+        : `https://vibecart-alpha.vercel.app/payment/cancel?canceled=true`,
     metadata: { orderId: newOrder._id.toString() },
   });
 
   console.log("Stripe session URL:", session.url); // Verify URL in logs
-  return { sessionUrl: session.url };
+  return { 
+    sessionUrl: session.url,
+    orderId: newOrder._id.toString()
+  };
 }

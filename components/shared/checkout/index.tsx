@@ -134,7 +134,10 @@ export default function CheckoutComponent() {
       });
   };
   const cart = useCartStore((state: any) => state.cart.cartItems);
-  const { emptyCart } = useCartStore();
+  const emptyCart = useCartStore((state: any) => state.emptyCart);
+  const backupCart = useCartStore((state: any) => state.backupCart);
+  const restoreCart = useCartStore((state: any) => state.restoreCart);
+  const clearBackup = useCartStore((state: any) => state.clearBackup);
 
   const totalSaved: number = cart.reduce((acc: any, curr: any) => {
     // Add the 'saved' property value to the accumulator
@@ -178,6 +181,9 @@ export default function CheckoutComponent() {
 
       // For Stripe Payment
       if (paymentMethod === "stripe") {
+        // Backup cart before clearing it
+        backupCart();
+
         const response = await createStripeOrder(
           data?.products,
           user?.address,
@@ -189,15 +195,24 @@ export default function CheckoutComponent() {
           totalSaved
         );
 
+        // Clear cart before redirecting to Stripe
+        emptyCart();
+
         // Redirect to Stripe Checkout on the client side
         if (response?.sessionUrl) {
+          // Store order info in sessionStorage for post-payment handling
+          sessionStorage.setItem('pendingOrderId', response.orderId || '');
+          sessionStorage.setItem('paymentMethod', 'stripe');
+          
           window.location.href = response.sessionUrl;
         } else {
           toast.error("Stripe session URL not found");
+          // Restore cart if Stripe session creation failed
+          restoreCart();
           throw new Error("Stripe session URL not found");
         }
       }
-      // For other payment methods like Razorpay, handle accordingly
+      // For other payment methods like COD
       else {
         const orderResponse = await createOrder(
           data?.products,
@@ -209,21 +224,71 @@ export default function CheckoutComponent() {
           user._id,
           totalSaved
         );
+        
         if (orderResponse?.success) {
           emptyCart();
+          clearBackup();
+          
+          // Clear any pending order info
+          sessionStorage.removeItem('pendingOrderId');
+          sessionStorage.removeItem('paymentMethod');
+          
+          toast.success("Order placed successfully!");
           router.replace(`/order/${orderResponse.orderId}`);
         } else {
           console.error("Order creation failed:", orderResponse?.message);
-          toast.error(orderResponse?.message);
+          toast.error(orderResponse?.message || "Failed to create order");
         }
       }
     } catch (error) {
       console.error("Error placing order:", error);
       toast.error("An error occurred. Please try again.");
+      
+      // If Stripe payment failed, restore cart
+      if (paymentMethod === "stripe") {
+        const restored = restoreCart();
+        if (restored) {
+          toast.error("Payment failed. Your cart has been restored.");
+        } else {
+          toast.error("Payment failed. Please try again.");
+        }
+      }
     } finally {
-      setPlaceOrderLoading(false); // Reset loading state
+      setPlaceOrderLoading(false);
     }
   };
+
+  // Add effect to handle return from Stripe
+  useEffect(() => {
+    const handleStripeReturn = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const success = urlParams.get('success');
+      const canceled = urlParams.get('canceled');
+      
+      if (success === 'true') {
+        const pendingOrderId = sessionStorage.getItem('pendingOrderId');
+        if (pendingOrderId) {
+          sessionStorage.removeItem('pendingOrderId');
+          sessionStorage.removeItem('paymentMethod');
+          clearBackup(); // Clear backup after successful payment
+          toast.success("Payment successful!");
+          router.replace(`/order/${pendingOrderId}`);
+        }
+      } else if (canceled === 'true') {
+        const restored = restoreCart();
+        if (restored) {
+          toast.error("Payment was canceled. Your cart has been restored.");
+        } else {
+          toast.error("Payment was canceled.");
+        }
+        // Clear session storage
+        sessionStorage.removeItem('pendingOrderId');
+        sessionStorage.removeItem('paymentMethod');
+      }
+    };
+
+    handleStripeReturn();
+  }, [router, restoreCart, clearBackup]);
 
   return (
     <div className="container mx-auto p-4 md:p-8 ">

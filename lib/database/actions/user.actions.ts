@@ -11,11 +11,46 @@ import { handleError } from "@/lib/utils";
 // create user
 export async function createUser(user: any) {
   try {
+    console.log("🔗 Connecting to database...");
     await connectToDatabase();
+    
+    console.log("👤 Creating user with data:", user);
     const newUser = await User.create(user);
-    return JSON.parse(JSON.stringify(newUser));
-  } catch (error) {
-    handleError(error);
+    
+    console.log("✅ User created successfully in database:", newUser._id);
+    return {
+      success: true,
+      message: "User created successfully",
+      user: JSON.parse(JSON.stringify(newUser)),
+      ...JSON.parse(JSON.stringify(newUser))
+    };
+  } catch (error: any) {
+    console.error("❌ Error creating user:", error);
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      return {
+        success: false,
+        message: `User with this ${duplicateField} already exists`,
+        user: null
+      };
+    }
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      return {
+        success: false,
+        message: `Validation failed: ${validationErrors.join(', ')}`,
+        user: null
+      };
+    }
+    
+    return {
+      success: false,
+      message: error.message || "Failed to create user",
+      user: null
+    };
   }
 }
 
@@ -36,45 +71,85 @@ export async function getUserById(clerkId: string) {
       success: true,
       user: JSON.parse(JSON.stringify(user)),
     };
-  } catch (error) {
-    handleError(error);
+  } catch (error: any) {
+    console.error("❌ Error getting user:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to get user",
+      user: null
+    };
   }
 }
 
 // update user
 export async function updateUser(clerkId: string, user: any) {
   try {
+    console.log("🔗 Connecting to database...");
     await connectToDatabase();
+    
+    console.log("🔄 Updating user:", clerkId, "with data:", user);
     const updatedUser = await User.findOneAndUpdate({ clerkId }, user, {
       new: true,
     });
+    
     if (!updatedUser) {
+      console.log("❌ User not found for update:", clerkId);
       return {
         message: "User not found with this ID!",
         success: false,
         user: null,
       };
     }
-    return JSON.parse(JSON.stringify(updatedUser));
-  } catch (error) {
-    handleError(error);
+    
+    console.log("✅ User updated successfully");
+    return {
+      success: true,
+      message: "User updated successfully",
+      user: JSON.parse(JSON.stringify(updatedUser)),
+      ...JSON.parse(JSON.stringify(updatedUser))
+    };
+  } catch (error: any) {
+    console.error("❌ Error updating user:", error);
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      return {
+        success: false,
+        message: `Validation failed: ${validationErrors.join(', ')}`,
+        user: null
+      };
+    }
+    
+    return {
+      success: false,
+      message: error.message || "Failed to update user",
+      user: null
+    };
   }
 }
 
 // delete user
 export async function deleteUser(clerkId: string) {
   try {
+    console.log("🔗 Connecting to database...");
     await connectToDatabase();
+    
+    console.log("🗑️ Finding user to delete:", clerkId);
     const usertoDelete = await User.findOne({ clerkId });
     if (!usertoDelete) {
+      console.log("❌ User not found for deletion:", clerkId);
       return {
         message: "User not found with this ID!",
         success: false,
         user: null,
       };
     }
+    
+    console.log("🗑️ Deleting user:", usertoDelete._id);
     const deletedUser = await User.findByIdAndDelete(usertoDelete._id);
     revalidatePath("/");
+    
+    console.log("✅ User deleted successfully");
     return deletedUser
       ? {
           success: true,
@@ -83,11 +158,16 @@ export async function deleteUser(clerkId: string) {
         }
       : {
           success: false,
-          message: "Something went wrong",
+          message: "Something went wrong during deletion",
           user: null,
         };
-  } catch (error) {
-    handleError(error);
+  } catch (error: any) {
+    console.error("❌ Error deleting user:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to delete user",
+      user: null
+    };
   }
 }
 
