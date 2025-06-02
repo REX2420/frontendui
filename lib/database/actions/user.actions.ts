@@ -298,3 +298,202 @@ export async function getAllUserOrdersProfile(clerkId: string) {
     console.log(error);
   }
 }
+
+// Enhanced Address operations for multiple addresses (max 2):
+
+// Add new address for user (max 2 addresses)
+export async function addUserAddress(address: any, userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Initialize addresses array if it doesn't exist
+    if (!user.addresses || !Array.isArray(user.addresses)) {
+      user.addresses = [];
+    }
+
+    // Check if user already has 2 addresses (maximum limit)
+    if (user.addresses.length >= 2) {
+      throw new Error("You can only save up to 2 addresses");
+    }
+
+    // If this is the first address, make it default
+    if (user.addresses.length === 0) {
+      address.isDefault = true;
+    }
+
+    // Add the new address
+    user.addresses.push(address);
+    await user.save();
+
+    return {
+      success: true,
+      message: "Address added successfully",
+      addresses: JSON.parse(JSON.stringify(user.addresses))
+    };
+  } catch (error: any) {
+    console.error("Error adding address:", error);
+    throw new Error(error.message || "Failed to add address");
+  }
+}
+
+// Update existing address
+export async function updateUserAddress(addressId: string, updatedAddress: any, userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.addresses || !Array.isArray(user.addresses)) {
+      throw new Error("No addresses found");
+    }
+
+    // Find and update the specific address
+    const addressIndex = user.addresses.findIndex(
+      (addr: any) => addr._id.toString() === addressId
+    );
+
+    if (addressIndex === -1) {
+      throw new Error("Address not found");
+    }
+
+    // Update the address while preserving the _id and isDefault status
+    user.addresses[addressIndex] = {
+      ...user.addresses[addressIndex],
+      ...updatedAddress,
+      _id: user.addresses[addressIndex]._id,
+    };
+
+    await user.save();
+
+    return {
+      success: true,
+      message: "Address updated successfully",
+      addresses: JSON.parse(JSON.stringify(user.addresses))
+    };
+  } catch (error: any) {
+    console.error("Error updating address:", error);
+    throw new Error(error.message || "Failed to update address");
+  }
+}
+
+// Delete address
+export async function deleteUserAddress(addressId: string, userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.addresses || !Array.isArray(user.addresses)) {
+      throw new Error("No addresses found");
+    }
+
+    if (user.addresses.length === 1) {
+      throw new Error("You must have at least one address");
+    }
+
+    // Find the address to delete
+    const addressToDelete = user.addresses.find(
+      (addr: any) => addr._id.toString() === addressId
+    );
+
+    if (!addressToDelete) {
+      throw new Error("Address not found");
+    }
+
+    // Remove the address
+    user.addresses = user.addresses.filter(
+      (addr: any) => addr._id.toString() !== addressId
+    );
+
+    // If the deleted address was default, make the first remaining address default
+    if (addressToDelete.isDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    return {
+      success: true,
+      message: "Address deleted successfully",
+      addresses: JSON.parse(JSON.stringify(user.addresses))
+    };
+  } catch (error: any) {
+    console.error("Error deleting address:", error);
+    throw new Error(error.message || "Failed to delete address");
+  }
+}
+
+// Set default address
+export async function setDefaultAddress(addressId: string, userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.addresses || !Array.isArray(user.addresses)) {
+      throw new Error("No addresses found");
+    }
+
+    // Find the address to set as default
+    const addressExists = user.addresses.some(
+      (addr: any) => addr._id.toString() === addressId
+    );
+
+    if (!addressExists) {
+      throw new Error("Address not found");
+    }
+
+    // Update all addresses: set the selected one as default, others as non-default
+    user.addresses = user.addresses.map((addr: any) => ({
+      ...addr,
+      isDefault: addr._id.toString() === addressId
+    }));
+
+    await user.save();
+
+    return {
+      success: true,
+      message: "Default address updated successfully",
+      addresses: JSON.parse(JSON.stringify(user.addresses))
+    };
+  } catch (error: any) {
+    console.error("Error setting default address:", error);
+    throw new Error(error.message || "Failed to set default address");
+  }
+}
+
+// Get user addresses
+export async function getUserAddresses(userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const addresses = user.addresses || [];
+
+    return {
+      success: true,
+      addresses: JSON.parse(JSON.stringify(addresses))
+    };
+  } catch (error: any) {
+    console.error("Error getting addresses:", error);
+    throw new Error(error.message || "Failed to get addresses");
+  }
+}

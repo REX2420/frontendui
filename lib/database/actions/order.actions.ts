@@ -56,27 +56,34 @@ export async function createOrder(
       isPaid: false,
     }).save();
     
-    let config = {
-      service: "gmail",
-      auth: {
-        user: "raghunadhwinwin@gmail.com",
-        pass: process.env.GOOGLE_APP_PASSWORD as string,
-      },
-    };
-    let transporter = nodemailer.createTransport(config);
-    let dataConfig = {
-      from: config.auth.user,
-      to: user.email,
-      subject: "Order Confirmation - VibeCart",
-      html: await render(EmailTemplate(newOrder)),
-    };
-    await transporter.sendMail(dataConfig).then(() => {
-      return {
-        message: "You should receive an email",
-        orderId: JSON.parse(JSON.stringify(newOrder._id)),
-        success: true,
-      };
-    });
+    // Email sending is optional - don't block order creation if email fails
+    try {
+      // Only attempt to send email if credentials are available
+      if (process.env.GOOGLE_APP_PASSWORD) {
+        let config = {
+          service: "gmail",
+          auth: {
+            user: "raghunadhwinwin@gmail.com",
+            pass: process.env.GOOGLE_APP_PASSWORD as string,
+          },
+        };
+        let transporter = nodemailer.createTransport(config);
+        let dataConfig = {
+          from: config.auth.user,
+          to: user.email,
+          subject: "Order Confirmation - VibeCart",
+          html: await render(EmailTemplate(newOrder)),
+        };
+        await transporter.sendMail(dataConfig);
+        console.log("Order confirmation email sent successfully");
+      } else {
+        console.warn("GOOGLE_APP_PASSWORD not configured - skipping email notification");
+      }
+    } catch (emailError) {
+      // Log email error but don't fail the order
+      console.error("Failed to send order confirmation email:", emailError);
+    }
+    
     return {
       message: "Successfully placed Order.",
       orderId: JSON.parse(JSON.stringify(newOrder._id)),

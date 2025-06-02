@@ -85,3 +85,243 @@
 .para {
   @apply tracking-[0.6px] text-sm font-[400] sm:text-sm;
 }
+
+@layer components {
+  /* Modern checkout specific styles */
+  .checkout-card {
+    @apply bg-white rounded-2xl shadow-lg border border-gray-100;
+  }
+  
+  .checkout-step-indicator {
+    @apply flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300;
+  }
+  
+  .checkout-step-active {
+    @apply bg-gradient-to-r from-blue-500 to-purple-500 text-white border-transparent shadow-lg scale-110;
+  }
+  
+  .checkout-step-completed {
+    @apply bg-green-500 text-white border-green-500 shadow-md;
+  }
+  
+  .checkout-step-inactive {
+    @apply bg-white text-gray-400 border-gray-300 group-hover:border-gray-400;
+  }
+  
+  .checkout-form-input {
+    @apply h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg transition-colors duration-200;
+  }
+  
+  .checkout-button-primary {
+    @apply h-12 text-lg font-medium bg-gradient-to-r shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .checkout-button-gradient-blue {
+    @apply from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600;
+  }
+  
+  .checkout-button-gradient-purple {
+    @apply from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600;
+  }
+  
+  .checkout-button-gradient-green {
+    @apply from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600;
+  }
+  
+  .checkout-info-box {
+    @apply border rounded-xl p-4 transition-colors duration-200;
+  }
+  
+  .checkout-info-box-blue {
+    @apply bg-blue-50 border-blue-200 text-blue-700;
+  }
+  
+  .checkout-info-box-purple {
+    @apply bg-purple-50 border-purple-200 text-purple-700;
+  }
+  
+  .checkout-product-card {
+    @apply flex gap-4 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200;
+  }
+  
+  /* Enhanced mobile responsiveness for new checkout */
+  @media (max-width: 640px) {
+    .checkout-container {
+      @apply px-4 py-6;
+    }
+    
+    .checkout-header {
+      @apply mb-6 text-center;
+    }
+    
+    .checkout-header h1 {
+      @apply text-2xl font-bold;
+    }
+    
+    .checkout-step-text {
+      @apply text-xs;
+    }
+    
+    .checkout-step-description {
+      @apply hidden;
+    }
+    
+    .checkout-form-section {
+      @apply p-4 mb-6;
+    }
+    
+    .checkout-order-summary {
+      @apply p-4;
+    }
+    
+    .checkout-button-mobile {
+      @apply h-14 text-base;
+    }
+    
+    .checkout-input-mobile {
+      @apply h-12 text-base;
+    }
+    
+    /* Mobile-specific grid adjustments */
+    .checkout-grid-mobile {
+      @apply grid-cols-1 gap-4;
+    }
+    
+    .checkout-progress-mobile {
+      @apply mb-6;
+    }
+    
+    .checkout-progress-line-mobile {
+      @apply hidden;
+    }
+
+    /* Enhanced mobile checkout styles */
+    .enhanced-checkout-mobile {
+      @apply space-y-4;
+    }
+
+    .enhanced-order-summary-mobile {
+      @apply rounded-2xl shadow-lg;
+    }
+
+    .enhanced-product-card-mobile {
+      @apply p-3 rounded-xl;
+    }
+
+    .enhanced-product-image-mobile {
+      @apply w-16 h-16;
+    }
+  }
+  
+  /* Tablet responsiveness */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .checkout-tablet-grid {
+      @apply grid-cols-1 gap-6;
+    }
+    
+    .checkout-tablet-padding {
+      @apply p-6;
+    }
+  }
+  
+  /* Large screen optimizations */
+  @media (min-width: 1025px) {
+    .checkout-desktop-grid {
+      @apply grid-cols-12 gap-12;
+    }
+    
+    .checkout-desktop-padding {
+      @apply p-8;
+    }
+    
+    .checkout-sticky-sidebar {
+      @apply sticky top-6;
+    }
+  }
+}
+
+/* Animation classes for enhanced UX */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Enhanced focus styles for better accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+  
+  /* Modern button hover effects */
+  .btn-hover-lift {
+    @apply transform transition-transform duration-200 hover:-translate-y-0.5;
+  }
+  
+  /* Smooth color transitions */
+  .color-transition {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+
+  /* Custom Scrollbar for Order Summary */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #2563eb, #7c3aed);
+  }
+}

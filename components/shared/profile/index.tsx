@@ -21,6 +21,8 @@ import {
   getUserById,
   saveAddress,
 } from "@/lib/database/actions/user.actions";
+import { getUserAddresses } from "@/lib/database/actions/address.actions";
+import AddressManager from "@/components/shared/profile/address-manager";
 
 import Link from "next/link";
 import { useForm } from "@mantine/form";
@@ -32,6 +34,14 @@ export default function MyProfileComponent() {
   const [orders, setOrders] = useState<any[]>();
   const [address, setAddress] = useState<any>();
   const { signOut } = useClerk();
+  const [addresses, setAddresses] = useState<any[]>([]);
+
+  const [user, setUser] = useState({
+    name: "",
+    email: "",
+    avatar: "",
+    id: "",
+  });
 
   useEffect(() => {
     async function fetchAllUserOrders() {
@@ -49,15 +59,25 @@ export default function MyProfileComponent() {
         console.log(error);
       }
     }
-    fetchAllUserOrders();
-  }, [userId]);
 
-  const [user, setUser] = useState({
-    name: "",
-    email: "",
-    avatar: "",
-    id: "",
-  });
+    async function fetchUserAddresses() {
+      if (user?.id) {
+        try {
+          const addressResult = await getUserAddresses(user.id);
+          if (addressResult.success) {
+            setAddresses(addressResult.addresses);
+          }
+        } catch (error) {
+          console.error("Error fetching addresses:", error);
+        }
+      }
+    }
+
+    if (userId) {
+      fetchAllUserOrders();
+      fetchUserAddresses();
+    }
+  }, [userId, user]);
 
   useEffect(() => {
     if (userId) {
@@ -104,29 +124,31 @@ export default function MyProfileComponent() {
     },
     validate: {
       firstName: (value) =>
-        value.trim().length < 6
-          ? "First name must be at least 6 letters"
+        value.trim().length < 2
+          ? "First name must be at least 2 letters"
           : null,
       lastName: (value) =>
         value.trim().length < 2 ? "Last name must be at least 2 letters" : null,
       phoneNumber: (value) =>
-        value.trim().length < 10 && value.trim().length > 10
-          ? "Phone Number must be within 10 numbers"
-          : null,
+        value.trim().length < 7 ? "Phone number must be at least 7 digits" : 
+        value.trim().length > 15 ? "Phone number must not exceed 15 digits" : null,
       state: (value) =>
         value.length < 2 ? "State must be at least 2 letters" : null,
       city: (value) =>
         value.length < 2 ? "City must be at least 2 letters" : null,
       zipCode: (value) =>
-        value.length < 6 ? "Zip Code must be at least 6 characters." : null,
+        value.length < 3 ? "Zip Code must be at least 3 characters" : 
+        value.length > 20 ? "Zip Code must not exceed 10 characters" : null,
       address1: (value) =>
         value.length > 100
-          ? "Address 1 must be at least 100 characters."
-          : null,
+          ? "Address 1 must not exceed 100 characters."
+          : value.length < 5 ? "Address must be at least 5 characters" : null,
       address2: (value) =>
         value.length > 100
-          ? "Address 2 must be at least 100 characters."
+          ? "Address 2 must not exceed 100 characters."
           : null,
+      country: (value) =>
+        value.length < 2 ? "Country must be at least 2 letters" : null,
     },
   });
   // form.setErrors({ firstName: "Too short", lastName: "Invalid email" });
@@ -146,6 +168,19 @@ export default function MyProfileComponent() {
       });
     }
   }, [address]);
+
+  const handleAddressUpdate = async () => {
+    if (user?.id) {
+      try {
+        const addressResult = await getUserAddresses(user.id);
+        if (addressResult.success) {
+          setAddresses(addressResult.addresses);
+        }
+      } catch (error) {
+        console.error("Error fetching addresses:", error);
+      }
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -242,116 +277,17 @@ export default function MyProfileComponent() {
             <TabsContent value="billing">
               <Card>
                 <CardHeader>
-                  <CardTitle>Billing Address</CardTitle>
+                  <CardTitle>Billing Addresses</CardTitle>
                   <CardDescription>
-                    Update your billing address details here.
+                    Manage your saved addresses for faster checkout.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form
-                    onSubmit={form.onSubmit(async (values) => {
-                      await saveAddress({ ...values, active: true }, user.id)
-                        .then((res) => {
-                          setAddress(res.addresses);
-                          toast.success("Successfully added address");
-                          // router.refresh();
-                        })
-                        .catch((err) => {
-                          console.log(err);
-                          toast.error(err);
-                        });
-                    })}
-                    className="space-y-4"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="firstName">First Name</label>
-                        <Input
-                          id="firstName"
-                          placeholder="First Name"
-                          {...form.getInputProps("firstName")}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="lastName">Last Name</label>
-                        <Input
-                          id="lastName"
-                          placeholder="Last Name"
-                          {...form.getInputProps("lastName")}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="phone">Phone Number</label>
-                      <Input
-                        id="phone"
-                        placeholder="Phone Number"
-                        {...form.getInputProps("phoneNumber")}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="state">State</label>
-                      <Input
-                        id="state"
-                        placeholder="State"
-                        {...form.getInputProps("state")}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="city">City</label>
-                      <Input
-                        id="city"
-                        placeholder="City"
-                        {...form.getInputProps("city")}
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="zipCode">Zip Code / Postal Code</label>
-                        <Input
-                          id="zipCode"
-                          placeholder="Zip Code / Postal Code"
-                          {...form.getInputProps("zipCode")}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="address1">Address 1</label>
-                      <Input
-                        id="address1"
-                        placeholder="Address 1"
-                        {...form.getInputProps("address1")}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="address2">Address 2</label>
-                      <Input
-                        id="address2"
-                        placeholder="Address 2"
-                        {...form.getInputProps("address2")}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="country">Country</label>
-                      <Input
-                        id="country"
-                        placeholder="Country"
-                        {...form.getInputProps("country")}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="w-full">
-                      Save Address
-                    </Button>
-                  </form>
+                  <AddressManager
+                    userId={user.id}
+                    addresses={addresses}
+                    onAddressUpdate={handleAddressUpdate}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
