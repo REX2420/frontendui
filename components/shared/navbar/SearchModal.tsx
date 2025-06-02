@@ -59,7 +59,6 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
     "Perfume",
     "Bath & Body",
     "Gifting",
-    "Crazy Deals",
     "Combos",
   ];
 

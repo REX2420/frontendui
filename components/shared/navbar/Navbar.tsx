@@ -1,10 +1,5 @@
-import { RiDiscountPercentFill } from "react-icons/ri";
 import { LuStore } from "react-icons/lu";
 import { GrLike } from "react-icons/gr";
-import { GiPerfumeBottle } from "react-icons/gi";
-import { FaBath } from "react-icons/fa";
-import { PiHighlighterCircleBold } from "react-icons/pi";
-import { MdFace4 } from "react-icons/md";
 import Link from "next/link";
 import CartDrawer from "./CartDrawer";
 import MobileHamBurgerMenu from "./mobile/hamburgerMenu";
@@ -14,43 +9,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Navbar = () => {
   const navItems = [
-    { name: "CRAZY DEALS", icon: <RiDiscountPercentFill size={24} /> },
-    { name: "SHOP ALL", icon: <LuStore size={24} /> },
+    { name: "CATEGORY", icon: <LuStore size={24} /> },
     { name: "BESTSELLERS", icon: <GrLike size={24} /> },
-    {
-      name: "PERFUMES",
-      icon: <GiPerfumeBottle size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Men's Perfume" },
-        { name: "Women's Perfume" },
-        { name: "Unisex Perfume" },
-        { name: "New Arrivals" },
-      ],
-    },
-    {
-      name: "BATH & BODY",
-      icon: <FaBath size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Shower Gel" },
-        { name: "Body Lotion" },
-        { name: "Hand Cream" },
-        { name: "Body Scrub" },
-      ],
-    },
-    { name: "MAKEUP", icon: <PiHighlighterCircleBold size={24} /> },
-    {
-      name: "SKINCARE",
-      icon: <MdFace4 size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Cleansers" },
-        { name: "Moisturizers" },
-        { name: "Serums" },
-        { name: "Sunscreen" },
-      ],
-    },
   ];
 
   return (
@@ -91,7 +51,7 @@ const Navbar = () => {
             {navItems.map((item) => (
               <Link
                 key={item.name}
-                href="#"
+                href={item.name === "CATEGORY" ? "/categories" : "#"}
                 className="text-sm font-medium text-foreground hover:text-primary group transition duration-300"
               >
                 {item.name}
