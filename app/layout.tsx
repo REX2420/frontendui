@@ -8,7 +8,7 @@ import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import TopBarComponent from "@/components/shared/TopBar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import CartManager from "@/components/shared/cart/CartManager";
+import { CartProvider } from "@/components/providers/CartProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -43,14 +43,14 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <CartManager>
+            <CartProvider>
               <TopBarComponent />
               <Navbar />
               {children}
               <MobileBottomBar />
               <Footer />
               <Toaster />
-            </CartManager>
+            </CartProvider>
           </ThemeProvider>
         </body>
       </html>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { applyCoupon, saveAddress } from "@/lib/database/actions/user.actions";
+import { applyCoupon, saveAddress, getUserById } from "@/lib/database/actions/user.actions";
 import { getUserAddresses, addUserAddress, updateUserAddress } from "@/lib/database/actions/address.actions";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import { FaArrowAltCircleRight } from "react-icons/fa";
 import {
   createOrder,
 } from "@/lib/database/actions/order.actions";
-import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
 import DeliveryAddressForm from "./delivery.address.form";
 import ApplyCouponForm from "./apply.coupon.form";
 import AddressSelector from "./address-selector";
@@ -108,27 +107,40 @@ export default function CheckoutComponent() {
   useEffect(() => {
     const fetchData = async () => {
       if (userId) {
-        const savedCart = await getSavedCartForUser(userId);
-        setData(savedCart);
-        setUser(savedCart.user);
-        setAddress(savedCart.user.address);
-        
-        // Load user's saved addresses
         try {
-          const userAddresses = await getUserAddresses(savedCart.user._id);
-          if (userAddresses.success && userAddresses.addresses.length > 0) {
-            setAddresses(userAddresses.addresses);
-            // Select the default address or first address
-            const defaultAddress = userAddresses.addresses.find((addr: any) => addr.isDefault);
-            const addressToSelect = defaultAddress || userAddresses.addresses[0];
-            setSelectedAddressId(addressToSelect._id);
+          // Get user data from database
+          const userData = await getUserById(userId);
+          if (userData.success) {
+            setUser(userData.user);
+            
+            // Try to load user addresses if user exists
+            try {
+              const userAddresses = await getUserAddresses(userData.user._id);
+              if (userAddresses.success && userAddresses.addresses.length > 0) {
+                setAddresses(userAddresses.addresses);
+                const defaultAddress = userAddresses.addresses.find((addr: any) => addr.isDefault);
+                const addressToSelect = defaultAddress || userAddresses.addresses[0];
+                setSelectedAddressId(addressToSelect._id);
+                setShowAddressForm(false);
+              } else {
+                setShowAddressForm(true);
+              }
+            } catch (error) {
+              console.error("Error loading addresses:", error);
+              setShowAddressForm(true);
+            }
           } else {
+            // If user doesn't exist in database, just show address form
             setShowAddressForm(true);
           }
         } catch (error) {
-          console.error("Error loading addresses:", error);
+          console.error("Error loading user data:", error);
           setShowAddressForm(true);
         }
+        
+        // Sync authentication state
+        const setAuth = useCartStore.getState().setAuthenticated;
+        setAuth(!!userId);
       }
     };
     fetchData();
@@ -136,7 +148,14 @@ export default function CheckoutComponent() {
 
   const applyCouponHandler = async (e: any) => {
     e.preventDefault();
-    await applyCoupon(coupon, user._id)
+    
+    if (!user?._id) {
+      toast.error("User information not available");
+      return;
+    }
+    
+    // Pass the client-side cart total to the applyCoupon function
+    await applyCoupon(coupon, user._id, calculatedSubtotal)
       .catch((err) => {
         setCouponError(err);
       })
@@ -155,13 +174,16 @@ export default function CheckoutComponent() {
   
   const cart = useCartStore((state: any) => state.cart.cartItems);
   const emptyCart = useCartStore((state: any) => state.emptyCart);
+  const getCartTotal = useCartStore((state: any) => state.getCartTotal);
+  const isAuthenticated = useCartStore((state: any) => state.isAuthenticated);
+  const setAuthenticated = useCartStore((state: any) => state.setAuthenticated);
 
   const totalSaved: number = cart.reduce((acc: any, curr: any) => {
     return acc + (curr.saved || 0) * curr.qty;
   }, 0);
-  const [subTotal, setSubtotal] = useState<number>(0);
-  // Use backend-calculated cartTotal as primary source, with fallback to calculated subtotal
-  const calculatedSubtotal = data?.cart?.cartTotal ? Number(data.cart.cartTotal) : subTotal;
+  
+  // Use client-side cart total instead of database cart total
+  const calculatedSubtotal = getCartTotal();
   const finalTotal = Math.max(0, calculatedSubtotal - totalSaved);
 
   const [placeOrderLoading, setPlaceOrderLoading] = useState<boolean>(false);
@@ -208,14 +230,26 @@ export default function CheckoutComponent() {
         return;
       }
 
+      // Convert client-side cart to order format
+      const orderProducts = cart.map((item: any) => ({
+        product: item._id,
+        name: item.name,
+        image: item.images?.[0]?.url || item.images?.[0] || "",
+        size: item.size,
+        qty: item.qty.toString(),
+        color: item.color || { color: "", image: "" },
+        price: item.price,
+        vendor: item.vendor || {},
+      }));
+
       const orderResponse = await createOrder(
-        data?.cart?.products,
+        orderProducts,
         selectedAddress,
         paymentMethod,
-        totalAfterDiscount !== "" ? totalAfterDiscount : data?.cart?.cartTotal,
-        data?.cart?.cartTotal,
+        totalAfterDiscount !== "" ? totalAfterDiscount : calculatedSubtotal.toString(),
+        calculatedSubtotal.toString(),
         coupon,
-        user._id,
+        user?._id || userId, // Use userId if user._id not available
         totalSaved
       );
       
@@ -244,23 +278,6 @@ export default function CheckoutComponent() {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
-
-  useEffect(() => {
-    if (data?.cart?.products) {
-      // First try to use the backend-calculated cartTotal
-      if (data?.cart?.cartTotal) {
-        setSubtotal(Number(data.cart.cartTotal));
-      } else {
-        // Fallback to manual calculation
-        const calculatedSubtotal = data.cart.products.reduce((acc: number, curr: any) => {
-          const price = Number(curr.price) || 0;
-          const qty = Number(curr.qty) || 0;
-          return acc + (price * qty);
-        }, 0);
-        setSubtotal(calculatedSubtotal);
-      }
-    }
-  }, [data]);
 
   const steps = [
     { number: 1, title: 'Delivery Address', icon: MapPin, description: 'Where should we deliver?' },
@@ -584,7 +601,7 @@ export default function CheckoutComponent() {
                       <div className="flex-1 text-white">
                         <h2 className="text-lg lg:text-xl xl:text-2xl font-bold">Order Summary</h2>
                         <p className="text-white/90 mt-1 text-sm lg:text-base">
-                          {data?.cart?.products?.length || 0} {data?.cart?.products?.length === 1 ? "item" : "items"} • 
+                          {cart.length} {cart.length === 1 ? "item" : "items"} • 
                           Total: MVR {totalAfterDiscount !== "" ? Number(totalAfterDiscount).toFixed(2) : finalTotal.toFixed(2)}
                         </p>
                       </div>
@@ -594,12 +611,12 @@ export default function CheckoutComponent() {
                   {/* Products List */}
                   <div className="p-4 lg:p-6 xl:p-8">
                     <div className="space-y-3 lg:space-y-4 mb-6 max-h-60 lg:max-h-80 overflow-y-auto custom-scrollbar">
-                      {data.cart?.products?.map((item: any, index: number) => (
+                      {cart.map((item: any, index: number) => (
                         <div key={index} className="group border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-3 lg:p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-lg dark:hover:shadow-black/25 transition-all duration-300 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 enhanced-product-card-mobile">
                           <div className="flex gap-3 lg:gap-4">
                             <div className="relative flex-shrink-0">
                               <img
-                                src={item.image}
+                                src={item.images?.[0]?.url || item.images?.[0] || ""}
                                 alt={item.name}
                                 className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg lg:rounded-xl shadow-md group-hover:shadow-lg dark:shadow-black/25 transition-shadow duration-300 enhanced-product-image-mobile"
                               />
@@ -673,7 +690,7 @@ export default function CheckoutComponent() {
                       <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 rounded-xl p-4 mb-4 border border-gray-200 dark:border-gray-600">
                         <div className="flex justify-between items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
                           <span>
-                            Order Summary ({data?.cart?.products?.length || 0} {data?.cart?.products?.length === 1 ? "item" : "items"})
+                            Order Summary ({cart.length} {cart.length === 1 ? "item" : "items"})
                           </span>
                           <span className="text-blue-600 dark:text-blue-400">MVR {calculatedSubtotal.toFixed(2)}</span>
                         </div>

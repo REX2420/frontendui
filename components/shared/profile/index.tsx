@@ -27,7 +27,6 @@ import AddressManager from "@/components/shared/profile/address-manager";
 import Link from "next/link";
 import { useForm } from "@mantine/form";
 import { toast } from "sonner";
-import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
 
 export default function MyProfileComponent() {
   const { userId } = useAuth();
@@ -95,18 +94,6 @@ export default function MyProfileComponent() {
           toast.error(res?.message);
         }
       });
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      getSavedCartForUser(userId)
-        .then((res) => {
-          setAddress(res?.address);
-        })
-        .catch((err) => {
-          toast.error(err);
-        });
     }
   }, [userId]);
 

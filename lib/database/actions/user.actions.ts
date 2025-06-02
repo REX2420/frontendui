@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { connectToDatabase } from "../connect";
-import Cart from "../models/cart.model";
 import Coupon from "../models/coupon.model";
 import Order from "../models/order.model";
 import User from "../models/user.model";
@@ -247,7 +246,7 @@ export async function saveAddress(address: any, user_id: any) {
 }
 
 // Coupon operations of user:
-export async function applyCoupon(coupon: any, user_id: any) {
+export async function applyCoupon(coupon: any, user_id: any, cartTotal?: number) {
   try {
     await connectToDatabase();
     const user = await User.findById(user_id);
@@ -258,10 +257,13 @@ export async function applyCoupon(coupon: any, user_id: any) {
     if (checkCoupon == null) {
       return { message: "Invalid Coupon", success: false };
     }
-    const { cartTotal } = await Cart.findOne({ user: user_id });
+    
+    // Use cartTotal parameter or fallback to 0 if not provided
+    const total = cartTotal || 0;
+    
     let totalAfterDiscount =
-      cartTotal - (cartTotal * checkCoupon.discount) / 100;
-    await Cart.findByIdAndUpdate(user._id, { totalAfterDiscount });
+      total - (total * checkCoupon.discount) / 100;
+      
     return JSON.parse(
       JSON.stringify({
         totalAfterDiscount: totalAfterDiscount.toFixed(2),
@@ -270,7 +272,12 @@ export async function applyCoupon(coupon: any, user_id: any) {
         success: true,
       })
     );
-  } catch (error) {}
+  } catch (error) {
+    return { 
+      message: "Error applying coupon", 
+      success: false 
+    };
+  }
 }
 
 // get all orders of user for their profile:
