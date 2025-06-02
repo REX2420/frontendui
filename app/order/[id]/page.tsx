@@ -1,6 +1,6 @@
 import OrderedProductDetailedView from "@/components/shared/order/OrderProductDeatiledView";
 import { Button } from "@/components/ui/button";
-import { getOrderDetailsById } from "@/lib/database/actions/order.actions";
+import { getOrderById } from "@/lib/database/actions/order.actions";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -18,10 +18,10 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
   if (!ObjectId.isValid(id)) {
     return <IdInvalidError />;
   }
-  const orderData = await getOrderDetailsById(id).catch((err) => {
+  const orderData = await getOrderById(id).catch((err: any) => {
     toast.error(err);
   });
-  if (!orderData?.success) {
+  if (!orderData?.orderData) {
     return <IdInvalidError />;
   }
   const date = new Date(orderData?.orderData.createdAt);
@@ -81,8 +81,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                 <div>
                   {orderData?.orderData?.paymentMethod === "cod"
                     ? "Cash on Delivery (COD)"
-                    : orderData?.orderData.paymentMethod == "stripe" &&
-                      "Stripe"}
+                    : "Cash on Delivery (COD)"}
                 </div>
               </div>
             </div>

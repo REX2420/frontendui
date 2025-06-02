@@ -1,7 +1,7 @@
-# VibeCart Webhook Setup Guide
+# VibeCart Payment Setup Guide
 
 ## Overview
-This guide explains how to set up and configure the improved webhook system for VibeCart, including Stripe webhooks and Clerk authentication webhooks.
+This guide explains the payment system configuration for VibeCart, which now supports Cash on Delivery (COD) payments.
 
 ## Prerequisites
 
@@ -9,11 +9,6 @@ This guide explains how to set up and configure the improved webhook system for 
 Create a `.env.local` file in your project root with the following variables:
 
 ```env
-# Stripe Configuration
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_WEBHOOK=whsec_...
-
 # Clerk Configuration
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
@@ -30,56 +25,23 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000  # Development
 # NEXT_PUBLIC_APP_URL=https://your-domain.com  # Production
 ```
 
-## Stripe Webhook Configuration
+## Payment Method: Cash on Delivery (COD)
 
-### 1. Create Stripe Webhook Endpoint
+### Implementation Details
+VibeCart now supports only Cash on Delivery (COD) payments, which provides:
 
-1. Log in to your [Stripe Dashboard](https://dashboard.stripe.com)
-2. Navigate to **Developers** → **Webhooks**
-3. Click **Add endpoint**
-4. Enter your webhook URL:
-   - **Development**: `https://your-ngrok-url.ngrok.io/api/webhooks/stripe`
-   - **Production**: `https://your-domain.com/api/webhooks/stripe`
+- **Immediate Order Creation**: Orders are created instantly without payment gateway processing
+- **Email Confirmation**: Automatic order confirmation emails sent to customers
+- **Order Tracking**: Full order status tracking system
+- **Simple Checkout**: Streamlined checkout process for customers
 
-### 2. Configure Webhook Events
-
-Select the following events to listen for:
-
-#### **Required Events**
-- `checkout.session.completed` - Payment completion
-- `payment_intent.succeeded` - Successful payment
-- `payment_intent.payment_failed` - Failed payment
-- `invoice.payment_succeeded` - Subscription payments (if applicable)
-
-#### **Optional Events** (for future enhancements)
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `payment_method.attached`
-- `setup_intent.succeeded`
-
-### 3. Get Webhook Secret
-
-1. After creating the webhook, click on it to view details
-2. Copy the **Signing secret** (starts with `whsec_`)
-3. Add it to your `.env.local` file as `STRIPE_SECRET_WEBHOOK`
-
-### 4. Test Webhook Locally
-
-For local development, use ngrok to expose your local server:
-
-```bash
-# Install ngrok
-npm install -g ngrok
-
-# Start your Next.js development server
-npm run dev
-
-# In another terminal, expose port 3000
-ngrok http 3000
-
-# Use the HTTPS URL for your webhook endpoint
-```
+### COD Order Flow
+1. **Cart Management**: Users add products to cart
+2. **Address Entry**: Customers provide delivery address
+3. **Coupon Application**: Optional discount coupons can be applied
+4. **Order Placement**: Order is created immediately upon confirmation
+5. **Email Notification**: Confirmation email sent to customer
+6. **Order Tracking**: Real-time order status updates
 
 ## Clerk Webhook Configuration
 
@@ -123,7 +85,6 @@ Create the following indexes for optimal performance:
 db.orders.createIndex({ "user": 1 })
 db.orders.createIndex({ "createdAt": -1 })
 db.orders.createIndex({ "isPaid": 1 })
-db.orders.createIndex({ "paymentResult.id": 1 })
 
 // Users collection
 db.users.createIndex({ "clerkId": 1 }, { unique: true })
@@ -145,83 +106,48 @@ db.users.createIndex({ "email": 1 }, { unique: true })
 
 The system uses React Email templates located in `/lib/emails/`. Customize these templates as needed for your brand.
 
-## Testing the Webhook System
+## Testing the Order System
 
-### 1. Test Stripe Webhooks
-
-Use Stripe CLI to test webhooks locally:
-
-```bash
-# Install Stripe CLI
-# Follow instructions at https://stripe.com/docs/stripe-cli
-
-# Login to Stripe
-stripe login
-
-# Forward events to your local webhook endpoint
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
-
-# Trigger test events
-stripe trigger checkout.session.completed
-stripe trigger payment_intent.succeeded
-stripe trigger payment_intent.payment_failed
-```
-
-### 2. Test Order Flow
+### 1. Test COD Order Flow
 
 1. **Create Test Order**:
-   ```bash
-   # Add products to cart
-   # Proceed to checkout
-   # Complete payment with test card: 4242 4242 4242 4242
-   ```
+   - Add products to cart
+   - Fill in delivery address
+   - Apply coupon (optional)
+   - Place order with COD
 
-2. **Verify Webhook Processing**:
-   - Check server logs for webhook events
-   - Verify order status updates in database
-   - Confirm email notifications are sent
-
-3. **Test Payment Failures**:
-   ```bash
-   # Use test card that triggers failure: 4000 0000 0000 0002
-   # Verify cart restoration
-   # Check error handling
-   ```
+2. **Verify Order Processing**:
+   - Check order creation in database
+   - Verify email notification is sent
+   - Confirm order status tracking works
 
 ## Monitoring and Debugging
 
-### 1. Webhook Logs
+### 1. Order Logs
 
-Monitor webhook processing in your application logs:
+Monitor order processing in your application logs:
 
 ```bash
-# View webhook processing logs
-tail -f logs/webhook.log
+# View order processing logs
+tail -f logs/order.log
 
 # Check for errors
-grep "ERROR" logs/webhook.log
+grep "ERROR" logs/order.log
 ```
 
-### 2. Stripe Dashboard
+### 2. Database Monitoring
 
-Monitor webhook delivery in Stripe Dashboard:
-- Go to **Developers** → **Webhooks**
-- Click on your webhook endpoint
-- View **Recent deliveries** for success/failure status
-
-### 3. Database Monitoring
-
-Monitor order status changes:
+Monitor order creation and status:
 
 ```javascript
 // Check recent orders
 db.orders.find().sort({ createdAt: -1 }).limit(10)
 
-// Check payment status
-db.orders.find({ isPaid: false })
+// Check order status
+db.orders.find({ paymentMethod: "cod" })
 
-// Check webhook processing
-db.orders.find({ "paymentResult.id": { $exists: true } })
+// Check email confirmations
+db.orders.find({ createdAt: { $gte: new Date(Date.now() - 24*60*60*1000) } })
 ```
 
 ## Production Deployment
@@ -231,75 +157,47 @@ db.orders.find({ "paymentResult.id": { $exists: true } })
 Set production environment variables in your hosting platform:
 
 ```env
-# Stripe Production Keys
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_PUBLISHABLE_KEY=pk_live_...
-STRIPE_SECRET_WEBHOOK=whsec_...
-
 # Production URLs
 NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Database
+MONGODB_URI=mongodb+srv://...
+
+# Email
+GOOGLE_APP_PASSWORD=your_production_app_password
 ```
 
-### 2. Webhook URLs
+### 2. SSL Certificate
 
-Update webhook URLs in both Stripe and Clerk dashboards to use your production domain.
-
-### 3. SSL Certificate
-
-Ensure your production domain has a valid SSL certificate for webhook security.
-
-### 4. Rate Limiting
-
-Consider implementing rate limiting for webhook endpoints:
-
-```typescript
-// Example rate limiting middleware
-import rateLimit from 'express-rate-limit'
-
-const webhookLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-})
-```
+Ensure your production domain has a valid SSL certificate for secure communications.
 
 ## Security Best Practices
 
-### 1. Webhook Signature Verification
+### 1. Data Validation
 
-Always verify webhook signatures:
-
-```typescript
-// Stripe signature verification
-const signature = headers.get("Stripe-Signature");
-const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-
-// Clerk signature verification
-const evt = wh.verify(body, headers) as WebhookEvent;
-```
-
-### 2. Idempotency
-
-Implement idempotency to handle duplicate webhook deliveries:
+Always validate order data:
 
 ```typescript
-// Check if order is already processed
-if (order.isPaid) {
-  console.log(`Order ${order._id} already marked as paid`);
-  return;
+// Validate order data before creation
+const validateOrderData = (orderData) => {
+  // Check required fields
+  // Validate product data
+  // Verify user information
+  // Confirm address details
 }
 ```
 
-### 3. Error Handling
+### 2. Error Handling
 
 Implement proper error handling and logging:
 
 ```typescript
 try {
-  // Process webhook
+  // Process order
 } catch (error) {
-  console.error("Webhook processing error:", error);
-  // Return appropriate HTTP status
-  return new Response("Internal Server Error", { status: 500 });
+  console.error("Order processing error:", error);
+  // Return appropriate error response
+  return { success: false, message: "Failed to create order" };
 }
 ```
 
@@ -307,36 +205,39 @@ try {
 
 ### Common Issues
 
-1. **Webhook Not Receiving Events**:
-   - Check webhook URL is correct
-   - Verify SSL certificate is valid
-   - Check firewall settings
-
-2. **Signature Verification Fails**:
-   - Verify webhook secret is correct
-   - Check for extra characters in environment variables
-   - Ensure raw body is used for verification
-
-3. **Database Connection Issues**:
-   - Verify MongoDB connection string
-   - Check database permissions
-   - Monitor connection pool
-
-4. **Email Delivery Issues**:
+1. **Email Delivery Issues**:
    - Verify Gmail app password
    - Check spam folders
    - Monitor email service logs
 
+2. **Database Connection Issues**:
+   - Verify MongoDB connection string
+   - Check database permissions
+   - Monitor connection pool
+
+3. **Order Creation Failures**:
+   - Check required order fields
+   - Verify user authentication
+   - Validate product data
+
 ### Debug Commands
 
 ```bash
-# Test webhook endpoint
-curl -X POST https://your-domain.com/api/webhooks/stripe \
-  -H "Content-Type: application/json" \
-  -d '{"test": "data"}'
-
-# Check environment variables
-echo $STRIPE_SECRET_WEBHOOK
+# Test email configuration
+node -e "
+const nodemailer = require('nodemailer');
+const config = {
+  service: 'gmail',
+  auth: {
+    user: 'your-email@gmail.com',
+    pass: process.env.GOOGLE_APP_PASSWORD
+  }
+};
+const transporter = nodemailer.createTransport(config);
+transporter.verify((error, success) => {
+  console.log(error ? 'Email config error:' + error : 'Email config OK');
+});
+"
 
 # Test database connection
 mongosh $MONGODB_URI --eval "db.runCommand('ping')"
@@ -344,9 +245,9 @@ mongosh $MONGODB_URI --eval "db.runCommand('ping')"
 
 ## Support and Resources
 
-- [Stripe Webhook Documentation](https://stripe.com/docs/webhooks)
-- [Clerk Webhook Documentation](https://clerk.com/docs/integrations/webhooks)
 - [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction)
 - [MongoDB Documentation](https://docs.mongodb.com/)
+- [Nodemailer Documentation](https://nodemailer.com/)
+- [Clerk Documentation](https://clerk.com/docs)
 
-For additional support, check the project's GitHub issues or contact the development team. 
+For additional support, check the project's documentation or contact the development team. 

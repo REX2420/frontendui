@@ -8,8 +8,6 @@ import { render } from "@react-email/components";
 import EmailTemplate from "@/lib/emails/index";
 import { handleError } from "@/lib/utils";
 import mongoose from "mongoose";
-import { redirect } from "next/navigation";
-import { stripe } from "@/lib/stripe";
 import { unstable_cache } from "next/cache";
 const { ObjectId } = mongoose.Types;
 
@@ -54,7 +52,10 @@ export async function createOrder(
       totalBeforeDiscount,
       couponApplied,
       totalSaved,
+      // For COD, mark as not paid initially
+      isPaid: false,
     }).save();
+    
     let config = {
       service: "gmail",
       auth: {
@@ -71,7 +72,7 @@ export async function createOrder(
     };
     await transporter.sendMail(dataConfig).then(() => {
       return {
-        message: "You Should revieve an email",
+        message: "You should receive an email",
         orderId: JSON.parse(JSON.stringify(newOrder._id)),
         success: true,
       };
@@ -83,111 +84,43 @@ export async function createOrder(
     };
   } catch (error) {
     handleError(error);
+    return {
+      message: "Failed to create order",
+      success: false,
+      orderId: null,
+    };
   }
 }
 
-// get order details by its ID
-export const getOrderDetailsById = unstable_cache(
+// get all the orders for a specific user
+export async function getAllUserOrders(userId: string) {
+  try {
+    await connectToDatabase();
+    const userOrders = await Order.find({ user: userId })
+      .populate("user")
+      .sort({ createdAt: -1 });
+    return JSON.parse(JSON.stringify(userOrders));
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+}
+
+// get an order by its id
+export const getOrderById = unstable_cache(
   async (orderId: string) => {
     try {
-      if (!ObjectId.isValid(orderId)) {
-        redirect("/");
-      }
       await connectToDatabase();
-      const orderData = await Order.findById(orderId)
-        .populate({ path: "user", model: User })
-        .lean();
-      if (!orderData) {
-        return {
-          message: "Order not found with this ID!",
-          success: false,
-          orderData: [],
-        };
-      } else {
-        return {
-          message: "Successfully grabbed data.",
-          success: true,
-          orderData: JSON.parse(JSON.stringify(orderData)),
-        };
-      }
+      const orderData = await Order.findById(orderId).populate("user");
+      return { orderData: JSON.parse(JSON.stringify(orderData)) };
     } catch (error) {
       handleError(error);
+      return null;
     }
   },
-  ["order_details"],
+  ["order-by-id"],
   {
-    revalidate: 300,
+    tags: ["order"],
+    revalidate: 300, // 5 minutes
   }
 );
-
-// create a stripe order instance
-export async function createStripeOrder(
-  products: {
-    product: string;
-    name: string;
-    image: string;
-    size: string;
-    qty: number;
-    color: { color: string; image: string };
-    price: number;
-    status: string;
-    productCompletedAt: Date | null;
-    _id: string;
-  }[],
-  shippingAddress: any,
-  paymentMethod: string,
-  total: number,
-  totalBeforeDiscount: number,
-  couponApplied: string,
-  userId: string,
-  totalSaved: number
-) {
-  await connectToDatabase();
-  const user = await User.findById(userId);
-  if (!user) {
-    return redirect("/sign-in");
-  }
-
-  const newOrder = await new Order({
-    user: user._id,
-    products,
-    shippingAddress,
-    paymentMethod,
-    total,
-    totalBeforeDiscount,
-    couponApplied,
-    totalSaved,
-  }).save();
-
-  const lineItems = products.map((item) => ({
-    price_data: {
-      currency: "inr",
-      unit_amount: item.price * 100,
-      product_data: {
-        name: item.name,
-        images: [item.image],
-      },
-    },
-    quantity: item.qty,
-  }));
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: lineItems,
-    success_url:
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/order/${newOrder._id}?success=true`
-        : `https://vibecart-alpha.vercel.app/order/${newOrder._id}?success=true`,
-    cancel_url:
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/payment/cancel?canceled=true`
-        : `https://vibecart-alpha.vercel.app/payment/cancel?canceled=true`,
-    metadata: { orderId: newOrder._id.toString() },
-  });
-
-  console.log("Stripe session URL:", session.url); // Verify URL in logs
-  return { 
-    sessionUrl: session.url,
-    orderId: newOrder._id.toString()
-  };
-}

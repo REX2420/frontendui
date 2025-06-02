@@ -15,7 +15,6 @@ import { useCartStore } from "@/store/cart";
 import { FaArrowAltCircleRight } from "react-icons/fa";
 import {
   createOrder,
-  createStripeOrder,
 } from "@/lib/database/actions/order.actions";
 import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
 import DeliveryAddressForm from "./delivery.address.form";
@@ -68,53 +67,39 @@ export default function CheckoutComponent() {
   });
 
   const { userId } = useAuth();
+  const router = useRouter();
+
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
+  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+
+  const isActiveStep = (stepNumber: number) => step === stepNumber;
+  const isStepCompleted = (stepNumber: number) => step > stepNumber;
+
   useEffect(() => {
-    if (userId) {
-      getSavedCartForUser(userId).then((res) => {
-        if (res?.success) {
-          setData(res?.cart);
-          setUser(res?.user);
-          setAddress(res?.address);
-        } else {
-          console.error("Failed to load checkout data:", res?.message);
-          toast.error(res?.message || "Failed to load checkout data");
+    const fetchData = async () => {
+      if (userId) {
+        const savedCart = await getSavedCartForUser(userId);
+        setData(savedCart);
+        setUser(savedCart.user);
+        setAddress(savedCart.user.address);
+        if (savedCart.user?.address?.firstName) {
+          form.setValues({
+            firstName: savedCart.user.address.firstName,
+            lastName: savedCart.user.address.lastName,
+            phoneNumber: savedCart.user.address.phoneNumber,
+            state: savedCart.user.address.state,
+            city: savedCart.user.address.city,
+            zipCode: savedCart.user.address.zipCode,
+            address1: savedCart.user.address.address1,
+            address2: savedCart.user.address.address2,
+            country: savedCart.user.address.country,
+          });
         }
-      }).catch((error) => {
-        console.error("Error loading checkout data:", error);
-        toast.error("Failed to load checkout data. Please try again.");
-      });
-    }
+      }
+    };
+    fetchData();
   }, [userId]);
 
-  useEffect(() => {
-    if (address && Object.keys(address).length > 0) {
-      form.setValues({
-        firstName: address.firstName || "",
-        lastName: address.lastName || "",
-        phoneNumber: address.phoneNumber || "",
-        state: address.state || "",
-        city: address.city || "",
-        zipCode: address.zipCode || "",
-        address1: address.address1 || "",
-        address2: address.address2 || "",
-        country: address.country || "",
-      });
-    }
-  }, [address]);
-
-  const nextStep = () => setStep(step + 1);
-  const prevStep = () => setStep(step - 1);
-  const router = useRouter();
-  useEffect(() => {
-    if (user?.address) {
-      setAddress(user?.address);
-    }
-    setSubtotal(
-      cart.reduce((a: any, c: any) => a + c.price * c.qty, 0).toFixed(2)
-    );
-  }, [user?.address]);
-  const isStepCompleted = (currentStep: number) => step > currentStep;
-  const isActiveStep = (currentStep: number) => step === currentStep;
   const applyCouponHandler = async (e: any) => {
     e.preventDefault();
     await applyCoupon(coupon, user._id)
@@ -125,7 +110,7 @@ export default function CheckoutComponent() {
         if (res.success) {
           setTotalAfterDiscount(res.totalAfterDiscount);
           setDiscount(res.discount);
-          toast.success(`Applied ${res.discount}% on order successfuly.`);
+          toast.success(`Applied ${res.discount}% on order successfully.`);
           setCouponError("");
           nextStep();
         } else if (!res.success) {
@@ -135,9 +120,6 @@ export default function CheckoutComponent() {
   };
   const cart = useCartStore((state: any) => state.cart.cartItems);
   const emptyCart = useCartStore((state: any) => state.emptyCart);
-  const backupCart = useCartStore((state: any) => state.backupCart);
-  const restoreCart = useCartStore((state: any) => state.restoreCart);
-  const clearBackup = useCartStore((state: any) => state.clearBackup);
 
   const totalSaved: number = cart.reduce((acc: any, curr: any) => {
     // Add the 'saved' property value to the accumulator
@@ -153,18 +135,17 @@ export default function CheckoutComponent() {
   const buttonText = () => {
     if (paymentMethod === "") {
       return "Please select the payment method";
-    } else if (paymentMethod === "cod") {
-      return "Place Order with COD";
     } else if (user?.address.firstName === "") {
       return "Please Add Billing Address";
-    } else if (paymentMethod === "stripe") {
-      return `Place Order with Stripe`;
+    } else {
+      return "Place Order with Cash on Delivery";
     }
   };
 
   useEffect(() => {
     useCartStore.persist.rehydrate();
   }, []);
+  
   const placeOrderHandler = async () => {
     try {
       setPlaceOrderLoading(true);
@@ -179,125 +160,63 @@ export default function CheckoutComponent() {
         return;
       }
 
-      // For Stripe Payment
-      if (paymentMethod === "stripe") {
-        // Backup cart before clearing it
-        backupCart();
-
-        const response = await createStripeOrder(
-          data?.products,
-          user?.address,
-          paymentMethod,
-          totalAfterDiscount !== "" ? totalAfterDiscount : data?.cartTotal,
-          data?.cartTotal,
-          coupon,
-          user._id,
-          totalSaved
-        );
-
-        // Clear cart before redirecting to Stripe
+      // Only COD payment method
+      const orderResponse = await createOrder(
+        data?.products,
+        user?.address,
+        paymentMethod,
+        totalAfterDiscount !== "" ? totalAfterDiscount : data?.cartTotal,
+        data?.cartTotal,
+        coupon,
+        user._id,
+        totalSaved
+      );
+      
+      if (orderResponse?.success) {
         emptyCart();
-
-        // Redirect to Stripe Checkout on the client side
-        if (response?.sessionUrl) {
-          // Store order info in sessionStorage for post-payment handling
-          sessionStorage.setItem('pendingOrderId', response.orderId || '');
-          sessionStorage.setItem('paymentMethod', 'stripe');
-          
-          window.location.href = response.sessionUrl;
-        } else {
-          toast.error("Stripe session URL not found");
-          // Restore cart if Stripe session creation failed
-          restoreCart();
-          throw new Error("Stripe session URL not found");
-        }
-      }
-      // For other payment methods like COD
-      else {
-        const orderResponse = await createOrder(
-          data?.products,
-          user?.address,
-          paymentMethod,
-          totalAfterDiscount !== "" ? totalAfterDiscount : data?.cartTotal,
-          data?.cartTotal,
-          coupon,
-          user._id,
-          totalSaved
-        );
         
-        if (orderResponse?.success) {
-          emptyCart();
-          clearBackup();
-          
-          // Clear any pending order info
-          sessionStorage.removeItem('pendingOrderId');
-          sessionStorage.removeItem('paymentMethod');
-          
-          toast.success("Order placed successfully!");
-          router.replace(`/order/${orderResponse.orderId}`);
-        } else {
-          console.error("Order creation failed:", orderResponse?.message);
-          toast.error(orderResponse?.message || "Failed to create order");
-        }
+        toast.success("Order placed successfully!");
+        router.replace(`/order/${orderResponse.orderId}`);
+      } else {
+        console.error("Order creation failed:", orderResponse?.message);
+        toast.error(orderResponse?.message || "Failed to create order");
       }
     } catch (error) {
       console.error("Error placing order:", error);
       toast.error("An error occurred. Please try again.");
-      
-      // If Stripe payment failed, restore cart
-      if (paymentMethod === "stripe") {
-        const restored = restoreCart();
-        if (restored) {
-          toast.error("Payment failed. Your cart has been restored.");
-        } else {
-          toast.error("Payment failed. Please try again.");
-        }
-      }
     } finally {
       setPlaceOrderLoading(false);
     }
   };
 
-  // Add effect to handle return from Stripe
   useEffect(() => {
-    const handleStripeReturn = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const success = urlParams.get('success');
-      const canceled = urlParams.get('canceled');
-      
-      if (success === 'true') {
-        const pendingOrderId = sessionStorage.getItem('pendingOrderId');
-        if (pendingOrderId) {
-          sessionStorage.removeItem('pendingOrderId');
-          sessionStorage.removeItem('paymentMethod');
-          clearBackup(); // Clear backup after successful payment
-          toast.success("Payment successful!");
-          router.replace(`/order/${pendingOrderId}`);
-        }
-      } else if (canceled === 'true') {
-        const restored = restoreCart();
-        if (restored) {
-          toast.error("Payment was canceled. Your cart has been restored.");
-        } else {
-          toast.error("Payment was canceled.");
-        }
-        // Clear session storage
-        sessionStorage.removeItem('pendingOrderId');
-        sessionStorage.removeItem('paymentMethod');
-      }
-    };
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const canceled = urlParams.get('canceled');
+    
+    if (success === 'true' || canceled === 'true') {
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
-    handleStripeReturn();
-  }, [router, restoreCart, clearBackup]);
+  // Calculate subtotal
+  useEffect(() => {
+    if (data?.products) {
+      const calculatedSubtotal = data.products.reduce((acc: number, curr: any) => {
+        return acc + (curr.price * curr.qty);
+      }, 0);
+      setSubtotal(calculatedSubtotal);
+    }
+  }, [data]);
 
   return (
-    <div className="container mx-auto p-4 md:p-8 ">
-      <h1 className="text-2xl font-bold mb-6 text-center">CHECKOUT</h1>
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-2/3">
-          {/* Stepper Tracker */}
-          <div className="relative flex items-center justify-between mb-8">
-            {/* Step 1 */}
+    <div className="flex flex-col lg:flex-row gap-8 max-w-6xl mx-auto p-6">
+      {/* Checkout Form */}
+      <div className="w-full lg:w-2/3">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-8">
             <div className="relative flex flex-col items-center">
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
@@ -327,14 +246,8 @@ export default function CheckoutComponent() {
               </span>
             </div>
 
-            {/* Horizontal Line */}
-            <div
-              className={`flex-1 border-t-2 mx-4 ${
-                step >= 2 ? "border-primary" : "border-gray-300"
-              }`}
-            ></div>
+            <div className="flex-1 h-0.5 bg-gray-300 mx-4"></div>
 
-            {/* Step 2 */}
             <div className="relative flex flex-col items-center">
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
@@ -364,14 +277,8 @@ export default function CheckoutComponent() {
               </span>
             </div>
 
-            {/* Horizontal Line */}
-            <div
-              className={`flex-1 border-t-2 mx-4 ${
-                step >= 3 ? "border-primary" : "border-gray-300"
-              }`}
-            ></div>
+            <div className="flex-1 h-0.5 bg-gray-300 mx-4"></div>
 
-            {/* Step 3 */}
             <div className="relative flex flex-col items-center">
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
@@ -458,10 +365,6 @@ export default function CheckoutComponent() {
                   <RadioGroupItem value="cod" id="cod" />
                   <Label htmlFor="cod">Cash on Delivery (COD)</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="stripe" id="stripe" />
-                  <Label htmlFor="stripe">Stripe</Label>
-                </div>
               </RadioGroup>
             </form>
           )}
@@ -542,42 +445,39 @@ export default function CheckoutComponent() {
                 </span>
                 <span>MVR {data?.cartTotal}</span>
               </div>
-              <div className="mt-[10px] flex flex-col gap-[5px] ">
-                {/* <span className="bg-[#eeeeee75] p-[5px] text-[14px] border border-[#cccccc17]  ">
-                {coupon === "" ? "Total: " : "Total before :"}
-                <b>MVR {cart.cartTotal}</b>
-              </span> */}
-                {discount > 0 && (
-                  <span className="discount bg-green-700 text-white p-[5px] text-[14px] border flex justify-between border-[#cccccc17]  ">
-                    Coupon applied :{" "}
-                    <b className="text-[15px] ">- {discount}%</b>
+              {totalAfterDiscount !== "" && (
+                <div className="flex justify-between">
+                  <span>Coupon Discount ({discount}%):</span>
+                  <span className="text-green-600">
+                    <strong>
+                      - MVR {data?.cartTotal - totalAfterDiscount}
+                    </strong>
                   </span>
-                )}
-                {totalAfterDiscount < data?.cartTotal &&
-                  totalAfterDiscount != "" && (
-                    <span className=" p-[5px] text-lg flex justify-between border border-[#cccccc17]  ">
-                      Total after Discount :{" "}
-                      <b className="text-[15px] ">MVR {totalAfterDiscount}</b>
-                    </span>
-                  )}
-              </div>
+                </div>
+              )}
+              {totalAfterDiscount !== "" && (
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total Amount:</span>
+                  <span>MVR {totalAfterDiscount}</span>
+                </div>
+              )}
             </div>
-
             <Button
-              onClick={() => placeOrderHandler()}
+              className="w-full mt-6"
+              onClick={placeOrderHandler}
               disabled={isDisabled}
-              className={`mt-[1rem] flex justify-center pt-[10px] gap-[10px] disabled:bg-[#ccc]  w-full h-[45px] bg-green-700 text-white ${
-                isDisabled ? "bg-theme_light cursor-not-allowed" : ""
-              }`}
             >
               {placeOrderLoading ? (
-                <div className="flex gap-[10px]">
-                  <Loader className="animate-spin" /> Loading...
+                <div className="flex items-center gap-2">
+                  <Loader className="w-4 h-4 animate-spin" />
+                  Placing Order...
                 </div>
               ) : (
-                buttonText()
+                <div className="flex items-center gap-2">
+                  <FaArrowAltCircleRight />
+                  {buttonText()}
+                </div>
               )}
-              <FaArrowAltCircleRight size={25} color="white" />
             </Button>
           </div>
         </div>

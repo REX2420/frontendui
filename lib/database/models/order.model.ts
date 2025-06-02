@@ -109,12 +109,6 @@ const orderSchema = new mongoose.Schema(
     totalSaved: {
       type: Number,
     },
-    razorpay_order_id: {
-      type: String,
-    },
-    razorpay_payment_id: {
-      type: String,
-    },
     paidAt: {
       type: Date,
     },
