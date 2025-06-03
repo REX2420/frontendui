@@ -6,6 +6,7 @@ import MobileHamBurgerMenu from "./mobile/hamburgerMenu";
 import NavbarInput from "./NavbarInput";
 import AccountDropDown from "@/components/shared/navbar/AccountDropDown";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import CategoryDropdown from "./CategoryDropdown";
 
 const Navbar = () => {
   const navItems = [
@@ -48,17 +49,14 @@ const Navbar = () => {
       <div className="hidden lg:block border-t border-border mt-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-evenly py-3">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.name === "CATEGORY" ? "/categories" : "#"}
-                className="text-sm font-medium text-foreground hover:text-primary group transition duration-300"
-              >
-                {item.name}
-
-                <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-foreground"></span>
-              </Link>
-            ))}
+            <CategoryDropdown />
+            <Link
+              href="#"
+              className="text-sm font-medium text-foreground hover:text-primary group transition duration-300"
+            >
+              BESTSELLERS
+              <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-foreground"></span>
+            </Link>
           </div>
         </div>
       </div>

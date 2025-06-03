@@ -4,8 +4,9 @@ import React from "react";
 import { hamburgerMenuState } from "../store";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Menu, Package, Truck, User, Download } from "lucide-react";
+import { Menu, Package, Truck, User, Download } from "lucide-react";
 import Link from "next/link";
+import MobileCategoryMenu from "./MobileCategoryMenu";
 
 const MobileHamBurgerMenu = ({
   navItems,
@@ -17,11 +18,6 @@ const MobileHamBurgerMenu = ({
   });
   const handleOnClickHamurgerMenu = () => {
     setHamMenuOpen(true);
-  };
-
-  const getNavItemHref = (itemName: string) => {
-    if (itemName === "CATEGORY") return "/categories";
-    return "#";
   };
 
   return (
@@ -82,39 +78,45 @@ const MobileHamBurgerMenu = ({
             </Button>
           </div>
 
-          {/* Navigation Items */}
+          {/* Categories Section */}
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
             Categories
           </h3>
-          <div className="space-y-2">
-            {navItems.map((item, index) => (
-              <Link 
-                key={item.name}
-                href={getNavItemHref(item.name)}
-                onClick={() => setHamMenuOpen(false)}
-              >
-                <div className="flex items-center justify-between p-4 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all duration-200 cursor-pointer group border border-transparent hover:border-orange-200 dark:hover:border-orange-800">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 rounded-full bg-muted group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors">
-                      {React.cloneElement(item.icon, { 
-                        size: 20, 
-                        className: "text-muted-foreground group-hover:text-orange-500 transition-colors" 
-                      })}
-                    </div>
-                    <span className="font-medium text-foreground group-hover:text-orange-600 transition-colors">
-                      {item.name}
-                    </span>
-                  </div>
-                  {item.hasSubmenu && (
-                    <ChevronRight 
-                      size={20} 
-                      className="text-muted-foreground group-hover:text-orange-500 transition-colors" 
-                    />
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
+          <MobileCategoryMenu onClose={() => setHamMenuOpen(false)} />
+
+          {/* Other Navigation Items */}
+          {navItems.filter(item => item.name !== "CATEGORY").length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4 mt-8">
+                More
+              </h3>
+              <div className="space-y-2">
+                {navItems
+                  .filter(item => item.name !== "CATEGORY")
+                  .map((item) => (
+                    <Link 
+                      key={item.name}
+                      href="#"
+                      onClick={() => setHamMenuOpen(false)}
+                    >
+                      <div className="flex items-center justify-between p-4 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all duration-200 cursor-pointer group border border-transparent hover:border-orange-200 dark:hover:border-orange-800">
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 rounded-full bg-muted group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors">
+                            {React.cloneElement(item.icon, { 
+                              size: 20, 
+                              className: "text-muted-foreground group-hover:text-orange-500 transition-colors" 
+                            })}
+                          </div>
+                          <span className="font-medium text-foreground group-hover:text-orange-600 transition-colors">
+                            {item.name}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Promotional Banner */}
