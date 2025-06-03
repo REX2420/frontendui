@@ -1,23 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/database/connect";
 import Blog from "../../../lib/database/models/blog.model";
+import { getPublishedBlogsForHome, getBlogsByCategory } from "@/lib/database/actions/blog.actions";
 
 export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
-    
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "6");
     const category = searchParams.get("category");
     const search = searchParams.get("search");
     
+    // Use cached functions for simple cases without search
+    if (!search && page === 1) {
+      if (category && category !== "All") {
+        // Use cached category-specific blog fetching
+        const result = await getBlogsByCategory(category, limit);
+        if (result.success) {
+          return NextResponse.json({
+            success: true,
+            blogs: result.blogs,
+            pagination: {
+              currentPage: 1,
+              totalPages: 1,
+              totalBlogs: result.blogs.length,
+              hasNext: false,
+              hasPrev: false,
+            },
+          });
+        }
+      } else if (!category || category === "All") {
+        // Use cached home page blog fetching
+        const result = await getPublishedBlogsForHome(limit);
+        if (result.success) {
+          return NextResponse.json({
+            success: true,
+            blogs: result.blogs,
+            pagination: {
+              currentPage: 1,
+              totalPages: 1,
+              totalBlogs: result.blogs.length,
+              hasNext: false,
+              hasPrev: false,
+            },
+          });
+        }
+      }
+    }
+
+    // Fallback to dynamic querying for complex cases (search, pagination)
+    await connectToDatabase();
+    
     const skip = (page - 1) * limit;
     
     // Build query
     let query: any = { status: "published" };
     
-    if (category) {
+    if (category && category !== "All") {
       query.category = category;
     }
     

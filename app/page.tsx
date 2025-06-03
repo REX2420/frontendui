@@ -1,4 +1,4 @@
-// ISR(CACHE) - 1 HOUR
+// ISR(CACHE) - 12 HOURS (43200 seconds)
 import BannerCarousel from "@/components/shared/home/BannerCarousel";
 import BlogSection from "@/components/shared/home/BlogImages";
 import FeaturedProducts from "@/components/shared/home/FeaturedProducts";
@@ -10,6 +10,9 @@ import {
   getNewArrivalProducts,
   getTopSellingProducts,
 } from "@/lib/database/actions/product.actions";
+
+// Enable ISR with 12-hour revalidation
+export const revalidate = 43200; // 12 hours in seconds
 
 const HomePage = async () => {
   const desktopImages: any = await fetchAllWebsiteBanners().catch((err) =>
