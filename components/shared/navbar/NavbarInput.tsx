@@ -1,10 +1,34 @@
 "use client";
-import React, { useState } from "react";
-import SearchModal from "./SearchModal";
+import React from "react";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const NavbarInput = ({ responsive }: { responsive: boolean }) => {
-  const [open, setOpen] = useState<boolean>(false);
+  const router = useRouter();
+
+  const handleSearchClick = () => {
+    router.push('/search');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLInputElement;
+      const query = target.value.trim();
+      if (query) {
+        router.push(`/search?q=${encodeURIComponent(query)}`);
+      } else {
+        router.push('/search');
+      }
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // If the input is empty, navigate to search page on focus
+    if (!e.target.value.trim()) {
+      router.push('/search');
+    }
+  };
+
   return responsive ? (
     <div className="lg:hidden">
       <div className="relative">
@@ -15,11 +39,12 @@ const NavbarInput = ({ responsive }: { responsive: boolean }) => {
         <input
           type="search"
           placeholder="Search for products, brands and more..."
-          className="pl-10 pr-4 py-2 w-full border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border"
-          onClick={() => setOpen(true)}
+          className="pl-10 pr-4 py-2 w-full border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border cursor-pointer"
+          onClick={handleSearchClick}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
         />
       </div>
-      {open && <SearchModal setOpen={setOpen} />}
     </div>
   ) : (
     <div className="hidden lg:block w-full max-w-xs">
@@ -31,10 +56,11 @@ const NavbarInput = ({ responsive }: { responsive: boolean }) => {
         <input
           type="search"
           placeholder="Search for products, brands and more..."
-          className="pl-10 pr-4 py-2 w-full border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border"
-          onClick={() => setOpen(true)}
+          className="pl-10 pr-4 py-2 w-full border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border cursor-pointer"
+          onClick={handleSearchClick}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
         />
-        {open && <SearchModal setOpen={setOpen} />}
       </div>
     </div>
   );

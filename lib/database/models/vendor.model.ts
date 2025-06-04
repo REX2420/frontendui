@@ -1,6 +1,20 @@
 import mongoose from "mongoose";
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+
+// Dynamically import bcrypt and jwt only when available
+let bcrypt: any = null;
+let jwt: any = null;
+
+try {
+  bcrypt = require("bcrypt");
+} catch (error) {
+  console.warn("bcrypt not available - password methods will be disabled");
+}
+
+try {
+  jwt = require("jsonwebtoken");
+} catch (error) {
+  console.warn("jsonwebtoken not available - JWT methods will be disabled");
+}
 
 const vendorSchema = new mongoose.Schema({
   name: {
@@ -51,19 +65,27 @@ const vendorSchema = new mongoose.Schema({
     default: false,
   },
 });
-// sign in vendor with JWT
+
+// Sign in vendor with JWT - only if jwt is available
 vendorSchema.methods.getJWTToken = function () {
+  if (!jwt) {
+    throw new Error("JWT functionality not available - install jsonwebtoken package");
+  }
   console.log(process.env.JWT_SECRET);
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: "5d",
   });
 };
-// comparing the password for vendor
 
+// Comparing the password for vendor - only if bcrypt is available
 vendorSchema.methods.comparePassword = async function (
   enteredPassword: string
 ) {
+  if (!bcrypt) {
+    throw new Error("Password comparison not available - install bcrypt package");
+  }
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
 const Vendor = mongoose.models.Vendor || mongoose.model("Vendor", vendorSchema);
 export default Vendor;

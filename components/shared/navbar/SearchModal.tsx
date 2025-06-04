@@ -191,6 +191,22 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             {query.length > 0 && products.length === 0 && (
               <div>No Results found for "{query}".</div>
             )}
+            {query.length > 0 && products.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <Link 
+                  href={`/search?q=${encodeURIComponent(query)}`}
+                  onClick={() => setOpen(false)}
+                  className="w-full"
+                >
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    View all results for "{query}"
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
