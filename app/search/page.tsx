@@ -1018,82 +1018,110 @@ export default function SearchPage() {
   );
 
   const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-        <Search className="w-12 h-12 text-gray-400" />
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="relative mb-8">
+        {/* Background glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
+        
+        {/* Icon container */}
+        <div className="relative w-24 h-24 sm:w-32 sm:h-32 mx-auto bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-full flex items-center justify-center shadow-xl border border-slate-200/50 dark:border-slate-600/50">
+          <Search className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 dark:text-slate-300" />
+        </div>
       </div>
       
       {filters.query.trim() ? (
         // No results found for search query
         <>
-          <h3 className="text-xl font-semibold mb-2">No results found</h3>
-          <p className="text-gray-600 mb-6">
-            Try adjusting your search terms or filters to find what you're looking for.
-          </p>
-          
-          <div className="space-y-4 mb-8">
-            <h4 className="font-medium">Search suggestions:</h4>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {["MacBook", "iPhone", "laptop", "phone", "apple"].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setFilters(prev => ({ ...prev, query: suggestion, page: 1 }))}
-                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
+          <div className="max-w-lg mx-auto space-y-6">
+            <div className="space-y-3">
+              <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent">
+                No results found
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl leading-relaxed">
+                We couldn't find anything matching <span className="font-semibold text-slate-800 dark:text-slate-200">"{filters.query}"</span>
+              </p>
+              <p className="text-slate-500 dark:text-slate-500 text-sm sm:text-base">
+                Try adjusting your search terms or explore our popular categories below.
+              </p>
             </div>
-          </div>
+            
+            
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => setFilters(prev => ({ ...prev, query: "", page: 1 }))}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Browse All Products
-            </button>
-            <button
-              onClick={handleClearSearch}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Clear Filters
-            </button>
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+              <button
+                onClick={() => setFilters(prev => ({ ...prev, query: "", page: 1 }))}
+                className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 hover:from-blue-700 hover:via-purple-700 hover:to-purple-800 text-white font-semibold rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/25 dark:hover:shadow-purple-500/25 hover:scale-105 active:scale-95 text-sm sm:text-base"
+              >
+                Browse All Products
+              </button>
+              <button
+                onClick={handleClearSearch}
+                className="px-6 py-3 sm:px-8 sm:py-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 text-sm sm:text-base"
+              >
+                Clear Search
+              </button>
+            </div>
           </div>
         </>
       ) : (
         // Welcome state for empty search
         <>
-          <h3 className="text-xl font-semibold mb-2">Discover Our Products</h3>
-          <p className="text-gray-600 mb-6">
-            Search for products, or browse our featured items below.
-          </p>
-          
-          <div className="w-full max-w-md mx-auto mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Try searching for 'MacBook' or 'iPhone'"
-                value={filters.query}
-                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          <div className="max-w-2xl mx-auto space-y-8">
+            <div className="space-y-4">
+              <h3 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                Discover Amazing Products
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl leading-relaxed">
+                Search through our curated collection of perfumes, skincare, and beauty products.
+              </p>
             </div>
-          </div>
+            
+            {/* Enhanced search input */}
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-focus-within:blur-2xl transition-all duration-300"></div>
+                <div className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-xl">
+                  <Search className="absolute left-4 sm:left-6 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-400 w-5 h-5 sm:w-6 sm:h-6" />
+                  <input
+                    type="text"
+                    placeholder="Try searching for 'perfume' or 'skincare'..."
+                    value={filters.query}
+                    onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+                    className="w-full pl-12 sm:pl-16 pr-6 py-4 sm:py-6 text-base sm:text-lg border-0 bg-transparent focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-400/50 transition-all duration-300 rounded-2xl placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-white font-medium"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
 
-          <div className="space-y-4">
-            <h4 className="font-medium">Quick searches:</h4>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {["MacBook", "iPhone", "Apple", "Technology"].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setFilters(prev => ({ ...prev, query: suggestion, page: 1 }))}
-                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
+            {/* Category suggestions */}
+            <div className="space-y-6">
+              <h4 className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-200">
+                Popular categories:
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                {[
+                  { name: "Perfume", icon: "🌹" },
+                  { name: "Skincare", icon: "✨" },
+                  { name: "Bath & Body", icon: "🛁" },
+                  { name: "Gifting", icon: "🎁" },
+                  { name: "Combos", icon: "💝" }
+                ].map((category) => (
+                  <button
+                    key={category.name}
+                    onClick={() => setFilters(prev => ({ ...prev, query: category.name, page: 1 }))}
+                    className="group p-4 sm:p-6 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 border border-slate-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-purple-500 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 dark:hover:shadow-purple-500/10 hover:scale-105 active:scale-95"
+                  >
+                    <div className="text-2xl sm:text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">
+                      {category.icon}
+                    </div>
+                    <div className="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-300">
+                      {category.name}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </>
