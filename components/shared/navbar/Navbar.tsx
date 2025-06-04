@@ -30,7 +30,7 @@ const Navbar = () => {
           <div className="flex-1 flex items-center justify-center lg:w-1/3">
             <Link href={"/"}>
               {" "}
-              <h1 className="text-2xl font-bold">VIBECART</h1>
+              <h1 className="text-2xl font-bold">IULAANSHOP</h1>
             </Link>
           </div>
 
