@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/database/connect";
+import { dbConnect } from "@/lib/database/mongodb";
 import Blog from "@/lib/database/models/blog.model";
+import { buildOptimizedBlogPipeline, buildCountPipeline } from "@/utils/searchPipeline";
+import { 
+  getCachedData, 
+  setCachedData, 
+  generateBlogCacheKey 
+} from "@/utils/searchCache";
+import { withPerformanceMonitoring } from "@/utils/queryAnalyzer";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,107 +16,77 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "";
     const sortBy = searchParams.get("sortBy") || "relevance";
     const status = searchParams.get("status") || "published";
+    const featured = searchParams.get("featured") === "true";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    await connectToDatabase();
+    // Generate cache key
+    const cacheKey = generateBlogCacheKey({
+      query,
+      category,
+      sortBy,
+      status,
+      featured,
+      page,
+      limit
+    });
 
-    // Build search query
-    let searchQuery: any = { status: status };
-
-    // Text search across multiple fields
-    if (query.trim()) {
-      searchQuery.$or = [
-        { title: { $regex: query, $options: "i" } },
-        { content: { $regex: query, $options: "i" } },
-        { excerpt: { $regex: query, $options: "i" } },
-        { authorName: { $regex: query, $options: "i" } },
-        { tags: { $in: [new RegExp(query, "i")] } },
-        { seoTitle: { $regex: query, $options: "i" } },
-        { seoDescription: { $regex: query, $options: "i" } }
-      ];
+    // Try to get from cache first
+    const cachedResult = await getCachedData(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(cachedResult);
     }
 
-    // Category filter
-    if (category && category !== "All") {
-      searchQuery.category = category;
-    }
+    // Connect to database with optimized connection
+    await dbConnect();
 
-    // Build sort criteria
-    let sortCriteria: any = {};
-    switch (sortBy) {
-      case "newest":
-        sortCriteria = { publishedAt: -1, createdAt: -1 };
-        break;
-      case "oldest":
-        sortCriteria = { publishedAt: 1, createdAt: 1 };
-        break;
-      case "popular":
-        sortCriteria = { views: -1, likes: -1 };
-        break;
-      case "likes":
-        sortCriteria = { likes: -1, views: -1 };
-        break;
-      case "views":
-        sortCriteria = { views: -1, likes: -1 };
-        break;
-      case "featured":
-        sortCriteria = { featured: -1, publishedAt: -1 };
-        break;
-      case "relevance":
-      default:
-        if (query.trim()) {
-          // For text search, prioritize title matches, then other fields
-          sortCriteria = { 
-            featured: -1,
-            likes: -1,
-            views: -1,
-            publishedAt: -1 
-          };
-        } else {
-          sortCriteria = { 
-            featured: -1, 
-            publishedAt: -1, 
-            views: -1 
-          };
-        }
-        break;
-    }
+    // Build optimized aggregation pipeline
+    const pipeline = buildOptimizedBlogPipeline({
+      searchTerm: query,
+      category,
+      status,
+      featured,
+      sortBy,
+      page,
+      limit
+    });
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+    // Build count pipeline for pagination
+    const countPipeline = buildCountPipeline(pipeline);
 
-    // Execute search with population of author details
-    const [blogs, totalCount] = await Promise.all([
-      Blog.find(searchQuery)
-        .populate('author', 'name email')
-        .sort(sortCriteria)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Blog.countDocuments(searchQuery)
+    // Execute both queries in parallel with performance monitoring
+    const [blogs, totalCountResult] = await Promise.all([
+      withPerformanceMonitoring(
+        () => Blog.aggregate(pipeline),
+        `Blog Search - Page ${page}`
+      ),
+      withPerformanceMonitoring(
+        () => Blog.aggregate(countPipeline),
+        `Blog Count - ${query || 'Browse'}`
+      )
     ]);
 
-    // Calculate total pages
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalBlogs = totalCountResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalBlogs / limit);
 
-    // Transform blogs for consistent API response
-    const transformedBlogs = blogs.map(blog => ({
+    // Transform blogs data for consistent response
+    const transformedBlogs = blogs.map((blog: any) => ({
       ...blog,
-      readingTime: calculateReadingTime(blog.content),
+      readingTime: calculateReadingTime(blog.content || ""),
       publishedDate: blog.publishedAt 
         ? new Date(blog.publishedAt).toLocaleDateString()
         : new Date(blog.createdAt).toLocaleDateString(),
-      excerpt: blog.excerpt || generateExcerpt(blog.content)
+      excerpt: blog.excerpt || generateExcerpt(blog.content || "")
     }));
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data: transformedBlogs,
+      blogs: transformedBlogs, // For compatibility with existing frontend
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults: totalCount,
+        totalResults: totalBlogs,
         hasNext: page < totalPages,
         hasPrev: page > 1,
         limit
@@ -118,17 +95,35 @@ export async function GET(request: NextRequest) {
         query,
         category,
         sortBy,
-        status
-      }
-    });
+        status,
+        featured
+      },
+      message: `Found ${totalBlogs} blogs`,
+      cached: false
+    };
+
+    // Cache the result (TTL: 5 minutes for search results)
+    await setCachedData(cacheKey, { ...result, cached: true }, 300);
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
-    console.error("Blog search error:", error);
+    console.error("🚨 Blog search error:", error);
     return NextResponse.json(
       {
         success: false,
+        data: [],
+        blogs: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalResults: 0,
+          hasNext: false,
+          hasPrev: false,
+          limit: 20
+        },
         message: error.message || "Failed to search blogs",
-        data: []
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     );

@@ -1,43 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/database/connect";
-import mongoose, { Model, Document } from "mongoose";
-
-interface VendorDocument extends Document {
-  name: string;
-  email: string;
-  description?: string;
-  address: string;
-  phoneNumber: number;
-  role: string;
-  zipCode: number;
-  availableBalance: number;
-  createdAt: Date;
-  commission?: number;
-  verified: boolean;
-}
-
-// Simple vendor schema for search purposes (without authentication methods)
-const searchVendorSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  description: { type: String },
-  address: { type: String, required: true },
-  phoneNumber: { type: Number, required: true },
-  role: { type: String, default: "vendor" },
-  zipCode: { type: Number, required: true },
-  availableBalance: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now },
-  commission: { type: Number },
-  verified: { type: Boolean, default: false },
-});
-
-// Use existing Vendor model if available, otherwise create a simple one
-function getVendorModel(): Model<VendorDocument> {
-  if (mongoose.models.Vendor) {
-    return mongoose.models.Vendor as Model<VendorDocument>;
-  }
-  return mongoose.model<VendorDocument>("Vendor", searchVendorSchema);
-}
+import { dbConnect } from "@/lib/database/mongodb";
+import Vendor from "@/lib/database/models/vendor.model";
+import { buildOptimizedVendorPipeline, buildCountPipeline } from "@/utils/searchPipeline";
+import { 
+  getCachedData, 
+  setCachedData, 
+  generateVendorCacheKey 
+} from "@/utils/searchCache";
+import { withPerformanceMonitoring } from "@/utils/queryAnalyzer";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,84 +19,54 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    await connectToDatabase();
-    const Vendor = getVendorModel();
+    // Generate cache key
+    const cacheKey = generateVendorCacheKey({
+      query,
+      verified: verified === "true" ? true : verified === "false" ? false : undefined,
+      location,
+      sortBy,
+      page,
+      limit
+    });
 
-    // Build search query
-    let searchQuery: any = {};
-
-    // Text search across multiple fields
-    if (query.trim()) {
-      searchQuery.$or = [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-        { address: { $regex: query, $options: "i" } },
-        { email: { $regex: query, $options: "i" } }
-      ];
+    // Try to get from cache first
+    const cachedResult = await getCachedData(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(cachedResult);
     }
 
-    // Verified filter
-    if (verified !== null && verified !== undefined) {
-      searchQuery.verified = verified === "true";
-    }
+    // Connect to database with optimized connection
+    await dbConnect();
 
-    // Location filter
-    if (location.trim()) {
-      searchQuery.address = { $regex: location, $options: "i" };
-    }
+    // Build optimized aggregation pipeline
+    const pipeline = buildOptimizedVendorPipeline({
+      searchTerm: query,
+      verified: verified === "true" ? true : verified === "false" ? false : undefined,
+      location,
+      sortBy,
+      page,
+      limit
+    });
 
-    // Build sort criteria
-    let sortCriteria: any = {};
-    switch (sortBy) {
-      case "newest":
-        sortCriteria = { createdAt: -1 };
-        break;
-      case "oldest":
-        sortCriteria = { createdAt: 1 };
-        break;
-      case "name":
-        sortCriteria = { name: 1 };
-        break;
-      case "verified":
-        sortCriteria = { verified: -1, createdAt: -1 };
-        break;
-      case "balance":
-        sortCriteria = { availableBalance: -1 };
-        break;
-      case "relevance":
-      default:
-        if (query.trim()) {
-          sortCriteria = { 
-            verified: -1,
-            createdAt: -1 
-          };
-        } else {
-          sortCriteria = { 
-            verified: -1, 
-            createdAt: -1 
-          };
-        }
-        break;
-    }
+    // Build count pipeline for pagination
+    const countPipeline = buildCountPipeline(pipeline);
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
-
-    // Execute search
-    const [vendors, totalCount] = await Promise.all([
-      Vendor.find(searchQuery)
-        .select('-password') // Exclude password field if it exists
-        .sort(sortCriteria)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Vendor.countDocuments(searchQuery)
+    // Execute both queries in parallel with performance monitoring
+    const [vendors, totalCountResult] = await Promise.all([
+      withPerformanceMonitoring(
+        () => Vendor.aggregate(pipeline),
+        `Vendor Search - Page ${page}`
+      ),
+      withPerformanceMonitoring(
+        () => Vendor.aggregate(countPipeline),
+        `Vendor Count - ${query || 'Browse'}`
+      )
     ]);
 
-    // Calculate total pages
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalVendors = totalCountResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalVendors / limit);
 
-    // Transform vendors for consistent API response
+    // Transform vendors data for consistent response
     const transformedVendors = vendors.map((vendor: any) => ({
       ...vendor,
       joinedDate: new Date(vendor.createdAt).toLocaleDateString(),
@@ -138,13 +78,14 @@ export async function GET(request: NextRequest) {
       description: vendor.description || `Professional vendor offering quality products and services.`
     }));
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data: transformedVendors,
+      vendors: transformedVendors, // For compatibility with existing frontend
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults: totalCount,
+        totalResults: totalVendors,
         hasNext: page < totalPages,
         hasPrev: page > 1,
         limit
@@ -154,16 +95,33 @@ export async function GET(request: NextRequest) {
         location,
         sortBy,
         verified: verified === "true" ? true : verified === "false" ? false : null
-      }
-    });
+      },
+      message: `Found ${totalVendors} vendors`,
+      cached: false
+    };
+
+    // Cache the result (TTL: 5 minutes for search results)
+    await setCachedData(cacheKey, { ...result, cached: true }, 300);
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
-    console.error("Vendor search error:", error);
+    console.error("🚨 Vendor search error:", error);
     return NextResponse.json(
       {
         success: false,
+        data: [],
+        vendors: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalResults: 0,
+          hasNext: false,
+          hasPrev: false,
+          limit: 20
+        },
         message: error.message || "Failed to search vendors",
-        data: []
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     );

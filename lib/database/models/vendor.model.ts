@@ -87,5 +87,44 @@ vendorSchema.methods.comparePassword = async function (
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// 🚀 OPTIMIZED INDEXES FOR VENDOR SEARCH PERFORMANCE
+// Text search index for vendor search capabilities
+vendorSchema.index({ 
+  name: 'text', 
+  description: 'text', 
+  address: 'text',
+  email: 'text'
+}, {
+  weights: {
+    name: 10,        // Highest priority for vendor name
+    description: 6,  // Medium-high priority for description
+    address: 4,      // Medium priority for address
+    email: 2         // Lower priority for email
+  },
+  name: 'vendor_text_search'
+});
+
+// Index for verified vendors (commonly filtered)
+vendorSchema.index({ verified: -1, createdAt: -1 });
+
+// Index for location-based searches
+vendorSchema.index({ zipCode: 1, address: 1 });
+
+// Index for email-based queries (login, authentication)
+vendorSchema.index({ email: 1 }, { unique: true });
+
+// Index for vendor balance queries (admin operations)
+vendorSchema.index({ availableBalance: -1 });
+
+// Index for vendor role queries
+vendorSchema.index({ role: 1, verified: -1 });
+
+// Compound index for complex vendor queries
+vendorSchema.index({ 
+  verified: -1, 
+  zipCode: 1, 
+  createdAt: -1 
+});
+
 const Vendor = mongoose.models.Vendor || mongoose.model("Vendor", vendorSchema);
 export default Vendor;

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/database/connect";
+import { dbConnect } from "@/lib/database/mongodb";
 import Product from "@/lib/database/models/product.model";
-import Category from "@/lib/database/models/category.model";
+import { buildOptimizedProductPipeline, buildCountPipeline } from "@/utils/searchPipeline";
+import { 
+  getCachedData, 
+  setCachedData, 
+  generateProductCacheKey 
+} from "@/utils/searchCache";
+import { withPerformanceMonitoring } from "@/utils/queryAnalyzer";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,79 +23,62 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    await connectToDatabase();
+    // Generate cache key
+    const cacheKey = generateProductCacheKey({
+      query,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy,
+      inStock,
+      featured,
+      discount,
+      page,
+      limit
+    });
 
-    // Calculate skip for pagination
-    const skip = (page - 1) * limit;
-
-    // Build the search query
-    const searchQuery: any = {};
-    
-    if (query) {
-      searchQuery.$or = [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-        { tags: { $in: [new RegExp(query, "i")] } }
-      ];
+    // Try to get from cache first
+    const cachedResult = await getCachedData(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(cachedResult);
     }
 
-    if (category && category !== "All") {
-      searchQuery.category = category;
-    }
+    // Connect to database with optimized connection
+    await dbConnect();
 
-    // Price filtering
-    searchQuery["subProducts.sizes.price"] = {
-      $gte: minPrice,
-      $lte: maxPrice === 999999 ? 1000 : maxPrice
-    };
+    // Build optimized aggregation pipeline
+    const pipeline = buildOptimizedProductPipeline({
+      searchTerm: query,
+      category,
+      minPrice,
+      maxPrice,
+      page,
+      limit,
+      sortBy,
+      inStock,
+      featured,
+      discount
+    });
 
-    if (inStock) {
-      searchQuery["subProducts.sizes.qty"] = { $gt: 0 };
-    }
+    // Build count pipeline for pagination
+    const countPipeline = buildCountPipeline(pipeline);
 
-    if (featured) {
-      searchQuery.isFeatured = true;
-    }
+    // Execute both queries in parallel with performance monitoring
+    const [products, totalCountResult] = await Promise.all([
+      withPerformanceMonitoring(
+        () => Product.aggregate(pipeline),
+        `Product Search - Page ${page}`
+      ),
+      withPerformanceMonitoring(
+        () => Product.aggregate(countPipeline),
+        `Product Count - ${query || 'Browse'}`
+      )
+    ]);
 
-    if (discount) {
-      searchQuery["subProducts.discount"] = { $gt: 0 };
-    }
-
-    // Build sort query
-    let sortQuery: any = {};
-    switch (sortBy) {
-      case "newest":
-        sortQuery = { createdAt: -1 };
-        break;
-      case "price-low":
-        sortQuery = { "subProducts.sizes.price": 1 };
-        break;
-      case "price-high":
-        sortQuery = { "subProducts.sizes.price": -1 };
-        break;
-      case "rating":
-        sortQuery = { averageRating: -1 };
-        break;
-      case "popularity":
-        sortQuery = { views: -1 };
-        break;
-      default:
-        sortQuery = { createdAt: -1 };
-    }
-
-    // Get total count for pagination
-    const totalProducts = await Product.countDocuments(searchQuery);
+    const totalProducts = totalCountResult[0]?.total || 0;
     const totalPages = Math.ceil(totalProducts / limit);
 
-    // Execute search with pagination
-    const products = await Product.find(searchQuery)
-      .populate("category", "name")
-      .sort(sortQuery)
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    // Transform products data
+    // Transform products data for consistent response
     const transformedProducts = products.map((product: any) => ({
       ...product,
       subProducts: product.subProducts?.map((sub: any) => ({
@@ -100,7 +89,7 @@ export async function GET(request: NextRequest) {
       })) || []
     }));
 
-    return NextResponse.json({
+    const result = {
       success: true,
       products: transformedProducts,
       pagination: {
@@ -111,11 +100,28 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
         limit
       },
-      message: `Found ${totalProducts} products`
-    });
+      searchInfo: {
+        query,
+        category,
+        priceRange: [minPrice, maxPrice === 999999 ? 1000 : maxPrice],
+        sortBy,
+        filters: {
+          inStock,
+          featured,
+          discount
+        }
+      },
+      message: `Found ${totalProducts} products`,
+      cached: false
+    };
 
-  } catch (error) {
-    console.error("Product search error:", error);
+    // Cache the result (TTL: 5 minutes for search results)
+    await setCachedData(cacheKey, { ...result, cached: true }, 300);
+
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error("🚨 Product search error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -128,7 +134,8 @@ export async function GET(request: NextRequest) {
           hasPrev: false,
           limit: 10
         },
-        message: "Failed to search products"
+        message: error.message || "Failed to search products",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     );

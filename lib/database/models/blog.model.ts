@@ -92,5 +92,57 @@ blogSchema.pre('save', function(next) {
   next();
 });
 
+// 🚀 OPTIMIZED INDEXES FOR BLOG SEARCH PERFORMANCE
+// Text search index for full-text search capabilities
+blogSchema.index({ 
+  title: 'text', 
+  content: 'text', 
+  excerpt: 'text',
+  tags: 'text',
+  authorName: 'text',
+  seoTitle: 'text',
+  seoDescription: 'text'
+}, {
+  weights: {
+    title: 10,        // Highest priority for blog title
+    excerpt: 8,       // High priority for excerpt
+    tags: 6,          // Medium-high priority for tags
+    authorName: 5,    // Medium priority for author
+    seoTitle: 4,      // Medium priority for SEO title
+    content: 3,       // Lower priority for content
+    seoDescription: 2 // Lower priority for SEO description
+  },
+  name: 'blog_text_search'
+});
+
+// Index for published blogs (most common query)
+blogSchema.index({ status: 1, publishedAt: -1 });
+
+// Index for category filtering
+blogSchema.index({ category: 1, publishedAt: -1 });
+
+// Index for featured blogs
+blogSchema.index({ featured: -1, publishedAt: -1 });
+
+// Index for popular blogs (views and likes)
+blogSchema.index({ views: -1, likes: -1 });
+
+// Index for author-specific queries
+blogSchema.index({ author: 1, publishedAt: -1 });
+
+// Index for slug-based queries (blog detail pages)
+blogSchema.index({ slug: 1 }, { unique: true });
+
+// Compound index for complex blog queries
+blogSchema.index({ 
+  status: 1, 
+  featured: -1, 
+  category: 1, 
+  publishedAt: -1 
+});
+
+// Index for tag-based searches
+blogSchema.index({ tags: 1, publishedAt: -1 });
+
 const Blog = mongoose.models.Blog || mongoose.model("Blog", blogSchema);
 export default Blog; 

@@ -90,6 +90,11 @@ export default function SearchPage() {
     }
   });
   
+  // Search History State
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [savedSearches, setSavedSearches] = useState<Array<{id: string, name: string, query: string, filters: SearchFilters, timestamp: Date}>>([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  
   const [filters, setFilters] = useState<SearchFilters>({
     query: searchParams.get("q") || "",
     category: "All",
@@ -104,19 +109,21 @@ export default function SearchPage() {
 
   // Search function
   const performSearch = useCallback(async () => {
-    if (!filters.query.trim()) {
-      setSearchResults({ products: [], blogs: [], vendors: [], total: 0, pagination: { currentPage: 1, totalPages: 1, totalResults: 0, hasNext: false, hasPrev: false, limit: 10 } });
-      return;
-    }
-
+    console.log('🔍 performSearch called with filters:', filters);
     setIsLoading(true);
+    
+    // Mark search start time for duration tracking
+    const searchStartTime = Date.now();
+    
     try {
       let products = [], blogs = [], vendors = [];
 
-      // Search products - try new API first, fallback to existing function
+      // Enhanced product search with better error handling
       try {
+        console.log('🔍 Searching products with filters:', filters);
+        
         const productResponse = await fetch(`/api/search/products?${new URLSearchParams({
-          q: filters.query,
+          q: filters.query || "", // Allow empty query for browse mode
           category: filters.category !== "All" ? filters.category : "",
           minPrice: filters.priceRange[0].toString(),
           maxPrice: filters.priceRange[1].toString(),
@@ -126,59 +133,111 @@ export default function SearchPage() {
           discount: filters.discount.toString(),
           page: filters.page.toString(),
           limit: filters.limit.toString()
-        })}`);
+        })}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('📡 Product API Response Status:', productResponse.status);
         
         if (productResponse.ok) {
           const productData = await productResponse.json();
+          console.log('✅ Product API Response:', productData);
+          
           products = productData.success ? productData.products : [];
+          
+          if (productData.success) {
+            console.log(`🎯 Found ${products.length} products`);
+          } else {
+            console.warn('❌ Product API returned unsuccessful response:', productData.message);
+          }
+        } else {
+          console.error('❌ Product API HTTP Error:', productResponse.status, productResponse.statusText);
+          throw new Error(`HTTP ${productResponse.status}: ${productResponse.statusText}`);
         }
       } catch (error) {
+        console.error('🚨 Product search API failed:', error);
+        
         // Fallback to existing product search function
         try {
+          console.log('🔄 Trying fallback product search...');
           const { getProductsByQuery } = await import("@/lib/database/actions/product.actions");
-          const productResult = await getProductsByQuery(filters.query);
+          const productResult = await getProductsByQuery(filters.query || "");
           products = productResult?.success ? productResult.products : [];
+          console.log('✅ Fallback product search result:', products.length, 'products');
         } catch (fallbackError) {
-          console.warn("Product search failed:", fallbackError);
+          console.error("🚨 Fallback product search failed:", fallbackError);
           products = [];
         }
       }
 
-      // Search blogs
+      // Enhanced blog search
       try {
-        const blogResponse = await fetch(`/api/search/blogs?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`);
+        console.log('📝 Searching blogs with query:', filters.query);
+        const blogResponse = await fetch(`/api/search/blogs?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
         if (blogResponse.ok) {
           const blogData = await blogResponse.json();
-          blogs = blogData.success ? blogData.blogs || blogData.data || [] : [];
+          console.log('📝 Blog API Response:', blogData);
+          // Handle different response structures from blog APIs
+          if (blogData.success) {
+            blogs = blogData.blogs || blogData.data || [];
+            console.log(`📝 Found ${blogs.length} blogs`);
+          } else {
+            console.warn('❌ Blog API returned unsuccessful response:', blogData.message);
+          }
         }
       } catch (error) {
+        console.warn('🚨 Blog search failed:', error);
+        
         // Fallback: search blogs using existing API
         try {
           const blogResponse = await fetch(`/api/blogs?search=${encodeURIComponent(filters.query)}&limit=10`);
           if (blogResponse.ok) {
             const blogData = await blogResponse.json();
             blogs = blogData.success ? blogData.blogs : [];
+            console.log(`📝 Fallback blog search: ${blogs.length} blogs`);
           }
         } catch (fallbackError) {
-          console.warn("Blog search failed:", fallbackError);
+          console.warn("Blog search fallback failed:", fallbackError);
           blogs = [];
         }
       }
 
-      // Search vendors
+      // Enhanced vendor search
       try {
-        const vendorResponse = await fetch(`/api/search/vendors?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`);
+        console.log('👥 Searching vendors with query:', filters.query);
+        const vendorResponse = await fetch(`/api/search/vendors?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
         if (vendorResponse.ok) {
           const vendorData = await vendorResponse.json();
-          vendors = vendorData.success ? vendorData.vendors || vendorData.data || [] : [];
+          console.log('👥 Vendor API Response:', vendorData);
+          // Handle different response structures from vendor APIs
+          if (vendorData.success) {
+            vendors = vendorData.vendors || vendorData.data || [];
+            console.log(`👥 Found ${vendors.length} vendors`);
+          } else {
+            console.warn('❌ Vendor API returned unsuccessful response:', vendorData.message);
+          }
         }
       } catch (error) {
-        console.warn("Vendor search not available yet:", error);
+        console.warn("🚨 Vendor search failed:", error);
         vendors = [];
       }
 
       const totalResults = (products?.length || 0) + (blogs?.length || 0) + (vendors?.length || 0);
       const calculatedTotalPages = Math.max(1, Math.ceil(totalResults / filters.limit));
+
+      console.log(`📊 Search Summary: ${totalResults} total results (${products.length} products, ${blogs.length} blogs, ${vendors.length} vendors)`);
 
       setSearchResults({
         products: Array.isArray(products) ? products : [],
@@ -194,8 +253,41 @@ export default function SearchPage() {
           limit: filters.limit
         }
       });
-      
+
+      // Save search term to history after successful search
+      if (filters.query.trim() && filters.query.length >= 2) {
+        const searchTerm = filters.query.trim();
+        setSearchHistory(prev => {
+          const newHistory = [searchTerm, ...prev.filter(term => term !== searchTerm)].slice(0, 10);
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('vibecart_search_history', JSON.stringify(newHistory));
+          }
+          
+          return newHistory;
+        });
+
+        // Track search analytics
+        try {
+          const searchEndTime = Date.now();
+          const searchDuration = searchEndTime - searchStartTime;
+          
+          fetch('/api/search/analytics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              searchTerm,
+              resultCount: totalResults,
+              searchDuration
+            })
+          }).catch(err => console.warn('Analytics tracking failed:', err));
+        } catch (analyticsError) {
+          console.warn('Search analytics failed:', analyticsError);
+        }
+      }
+
     } catch (error) {
+      console.error('🚨 Search failed completely:', error);
       handleError(error);
       toast.error("Search failed. Please try again.");
       setSearchResults({ products: [], blogs: [], vendors: [], total: 0, pagination: { currentPage: 1, totalPages: 1, totalResults: 0, hasNext: false, hasPrev: false, limit: 10 } });
@@ -272,19 +364,52 @@ export default function SearchPage() {
   }, []);
 
   // Effects
+  
+  // Load URL parameters on mount (must be first)
+  useEffect(() => {
+    const params = searchParams;
+    const newFilters = {
+      query: params.get('q') || '',
+      category: params.get('category') || 'All',
+      priceRange: [
+        parseInt(params.get('minPrice') || '0'),
+        parseInt(params.get('maxPrice') || '1000')
+      ] as [number, number],
+      sortBy: params.get('sortBy') || 'relevance',
+      inStock: params.get('inStock') === 'true',
+      featured: params.get('featured') === 'true',
+      discount: params.get('discount') === 'true',
+      page: parseInt(params.get('page') || '1'),
+      limit: parseInt(params.get('limit') || '10')
+    };
+    
+    setFilters(newFilters);
+  }, [searchParams]);
+
+  // Perform search when filters change
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       performSearch();
-      updateUrlParams();
     }, 300);
 
     return () => clearTimeout(delayedSearch);
-  }, [performSearch, updateUrlParams]);
+  }, [performSearch]); // Fixed: depend on performSearch instead of filters
+
+  // Update URL when filters change (separate effect to avoid conflicts)
+  useEffect(() => {
+    updateUrlParams();
+  }, [updateUrlParams]); // Fixed: depend on updateUrlParams function
 
   // Fetch trending subcategories on mount
   useEffect(() => {
     fetchTrendingSubcategories();
   }, [fetchTrendingSubcategories]);
+
+  // Initial search trigger (load browse results on mount)
+  useEffect(() => {
+    console.log('🚀 Initial search trigger on page load');
+    performSearch();
+  }, []); // Run once on mount
 
   // Auto-focus search input when page loads
   useEffect(() => {
@@ -292,6 +417,78 @@ export default function SearchPage() {
     if (searchInput && !filters.query) {
       searchInput.focus();
     }
+  }, []);
+
+  // Load search history from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedHistory = localStorage.getItem('vibecart_search_history');
+      const savedQueries = localStorage.getItem('vibecart_saved_searches');
+      
+      if (savedHistory) {
+        try {
+          setSearchHistory(JSON.parse(savedHistory));
+        } catch (error) {
+          console.warn('Failed to load search history:', error);
+        }
+      }
+      
+      if (savedQueries) {
+        try {
+          const parsed = JSON.parse(savedQueries);
+          setSavedSearches(parsed.map((item: any) => ({
+            ...item,
+            timestamp: new Date(item.timestamp)
+          })));
+        } catch (error) {
+          console.warn('Failed to load saved searches:', error);
+        }
+      }
+    }
+  }, []);
+
+  // Save complete search query with filters
+  const saveCompleteSearch = useCallback((name: string) => {
+    const newSavedSearch = {
+      id: Date.now().toString(),
+      name,
+      query: filters.query,
+      filters: { ...filters },
+      timestamp: new Date()
+    };
+    
+    setSavedSearches(prev => {
+      const newSaved = [newSavedSearch, ...prev].slice(0, 20); // Keep last 20 saved searches
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vibecart_saved_searches', JSON.stringify(newSaved));
+      }
+      
+      return newSaved;
+    });
+    
+    toast.success(`Search "${name}" saved successfully!`);
+  }, [filters]);
+
+  // Load saved search
+  const loadSavedSearch = useCallback((savedSearch: any) => {
+    setFilters(savedSearch.filters);
+    toast.success(`Loaded search "${savedSearch.name}"`);
+  }, []);
+
+  // Delete saved search
+  const deleteSavedSearch = useCallback((searchId: string) => {
+    setSavedSearches(prev => {
+      const newSaved = prev.filter(search => search.id !== searchId);
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vibecart_saved_searches', JSON.stringify(newSaved));
+      }
+      
+      return newSaved;
+    });
+    
+    toast.success('Saved search deleted');
   }, []);
 
   // Handle functions
@@ -630,15 +827,86 @@ export default function SearchPage() {
   );
 
   const EmptyState = () => (
-    <div className="text-center py-12 sm:py-16">
-      <Search className="w-16 h-16 sm:w-20 sm:h-20 mx-auto text-gray-300 mb-4 sm:mb-6" />
-      <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">No results found</h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
-        Try adjusting your search terms or filters to find what you're looking for.
-      </p>
-      <Button onClick={handleClearSearch} variant="outline">
-        Clear all filters
-      </Button>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+        <Search className="w-12 h-12 text-gray-400" />
+      </div>
+      
+      {filters.query.trim() ? (
+        // No results found for search query
+        <>
+          <h3 className="text-xl font-semibold mb-2">No results found</h3>
+          <p className="text-gray-600 mb-6">
+            Try adjusting your search terms or filters to find what you're looking for.
+          </p>
+          
+          <div className="space-y-4 mb-8">
+            <h4 className="font-medium">Search suggestions:</h4>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {["MacBook", "iPhone", "laptop", "phone", "apple"].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => setFilters(prev => ({ ...prev, query: suggestion, page: 1 }))}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition-colors"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => setFilters(prev => ({ ...prev, query: "", page: 1 }))}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Browse All Products
+            </button>
+            <button
+              onClick={handleClearSearch}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </>
+      ) : (
+        // Welcome state for empty search
+        <>
+          <h3 className="text-xl font-semibold mb-2">Discover Our Products</h3>
+          <p className="text-gray-600 mb-6">
+            Search for products, or browse our featured items below.
+          </p>
+          
+          <div className="w-full max-w-md mx-auto mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="search"
+                placeholder="Try searching for 'MacBook' or 'iPhone'"
+                value={filters.query}
+                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Quick searches:</h4>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {["MacBook", "iPhone", "Apple", "Technology"].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => setFilters(prev => ({ ...prev, query: suggestion, page: 1 }))}
+                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm transition-colors"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -773,6 +1041,8 @@ export default function SearchPage() {
               placeholder="Search products, blogs, vendors..."
               value={filters.query}
               onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+              onFocus={() => setShowSearchHistory(true)}
+              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
               className="pl-10 sm:pl-12 pr-10 h-12 sm:h-14 text-base border-2 border-gray-200 dark:border-gray-700 focus:border-primary transition-colors"
               autoFocus
             />
@@ -786,7 +1056,82 @@ export default function SearchPage() {
                 <X className="w-4 h-4" />
               </Button>
             )}
+
+            {/* Search History Dropdown */}
+            {showSearchHistory && searchHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 px-2">Recent Searches</div>
+                  {searchHistory.map((term, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setFilters(prev => ({ ...prev, query: term, page: 1 }));
+                        setShowSearchHistory(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm flex items-center gap-2"
+                    >
+                      <Search className="w-3 h-3 text-gray-400" />
+                      <span className="flex-1">{term}</span>
+                    </button>
+                  ))}
+                  <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                    <button
+                      onClick={() => {
+                        setSearchHistory([]);
+                        if (typeof window !== 'undefined') {
+                          localStorage.removeItem('vibecart_search_history');
+                        }
+                        setShowSearchHistory(false);
+                      }}
+                      className="w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      Clear history
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Save Current Search */}
+          {filters.query.trim() && (
+            <div className="flex items-center gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const searchName = prompt("Enter a name for this search:");
+                  if (searchName?.trim()) {
+                    saveCompleteSearch(searchName.trim());
+                  }
+                }}
+                className="text-xs"
+              >
+                Save Search
+              </Button>
+              
+              {savedSearches.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const saved = savedSearches.find(s => s.id === e.target.value);
+                      if (saved) loadSavedSearch(saved);
+                    }
+                  }}
+                  className="px-2 py-1 border rounded text-xs bg-white dark:bg-gray-800"
+                >
+                  <option value="">Load Saved Search</option>
+                  {savedSearches.map((saved) => (
+                    <option key={saved.id} value={saved.id}>
+                      {saved.name} ({saved.query || 'browse'})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           {/* Trending Searches */}
           {!filters.query && (
