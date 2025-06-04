@@ -1,3 +1,4 @@
+"use client";
 import { LuStore } from "react-icons/lu";
 import { GrLike } from "react-icons/gr";
 import Link from "next/link";
@@ -22,7 +23,7 @@ const Navbar = () => {
             {/* mobile hamburger menu */}
             <MobileHamBurgerMenu navItems={navItems} />
 
-            {/* TODO: for lg screen */}
+            {/* Search for large screens only */}
             <NavbarInput responsive={false} />
           </div>
 
@@ -42,8 +43,6 @@ const Navbar = () => {
             <CartDrawer />
           </div>
         </div>
-        {/* TODO: for sm screen */}
-        <NavbarInput responsive={true} />
       </div>
 
       <div className="hidden lg:block border-t border-border mt-4">

@@ -1,23 +1,38 @@
 "use client";
 import { useAtom, useStore } from "jotai";
 import React from "react";
-import { hamburgerMenuState } from "../store";
+import { hamburgerMenuState, cartMenuState } from "../store";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Package, Truck, User, Download } from "lucide-react";
+import { Menu, Package, Truck, User, Download, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import MobileCategoryMenu from "./MobileCategoryMenu";
+import { useAuth } from "@clerk/nextjs";
+import { useCartStore } from "@/store/cart";
 
 const MobileHamBurgerMenu = ({
   navItems,
 }: {
   navItems: { name: string; icon: any; hasSubmenu?: boolean }[];
 }) => {
+  const { isSignedIn } = useAuth();
+  const getCartItemCount = useCartStore((state: any) => state.getCartItemCount);
+  const isAuthenticated = useCartStore((state: any) => state.isAuthenticated);
+  
   const [hamMenuOpen, setHamMenuOpen] = useAtom(hamburgerMenuState, {
     store: useStore(),
   });
+  const [cartMenuOpen, setCartMenuOpen] = useAtom(cartMenuState, {
+    store: useStore(),
+  });
+  
   const handleOnClickHamurgerMenu = () => {
     setHamMenuOpen(true);
+  };
+
+  const handleOnClickCartMenu = () => {
+    setCartMenuOpen(true);
+    setHamMenuOpen(false); // Close hamburger menu when opening cart
   };
 
   return (
@@ -61,7 +76,7 @@ const MobileHamBurgerMenu = ({
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
             Quick Actions
           </h3>
-          <div className="grid grid-cols-2 gap-3 mb-8">
+          <div className="grid grid-cols-3 gap-3 mb-8">
             <Button
               variant="outline"
               className="flex flex-col items-center justify-center space-y-2 h-20 border-2 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all duration-200 group"
@@ -75,6 +90,19 @@ const MobileHamBurgerMenu = ({
             >
               <Truck size={24} className="text-muted-foreground group-hover:text-orange-500 transition-colors" />
               <span className="text-sm font-medium">Track Order</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleOnClickCartMenu}
+              className="flex flex-col items-center justify-center space-y-2 h-20 border-2 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all duration-200 group relative"
+            >
+              <ShoppingBag size={24} className="text-muted-foreground group-hover:text-orange-500 transition-colors" />
+              {isSignedIn && isAuthenticated && getCartItemCount() > 0 && (
+                <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-orange-500 rounded-full min-w-[18px]">
+                  {getCartItemCount()}
+                </span>
+              )}
+              <span className="text-sm font-medium">Cart</span>
             </Button>
           </div>
 

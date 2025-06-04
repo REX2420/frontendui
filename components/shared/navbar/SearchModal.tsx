@@ -77,7 +77,7 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             </Button>
           </div>
           <Input
-            type="search"
+            type="text"
             placeholder="Search..."
             className="w-full mb-4"
             value={query}

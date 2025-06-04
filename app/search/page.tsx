@@ -411,11 +411,15 @@ export default function SearchPage() {
     performSearch();
   }, []); // Run once on mount
 
-  // Auto-focus search input when page loads
+  // Auto-focus search input when page loads and no query exists
   useEffect(() => {
-    const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
-    if (searchInput && !filters.query) {
-      searchInput.focus();
+    // Focus the search input after component mounts
+    const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement;
+    if (searchInput && !filters.query.trim()) {
+      // Small delay to ensure the page is fully rendered
+      setTimeout(() => {
+        searchInput.focus();
+      }, 100);
     }
   }, []);
 
@@ -517,148 +521,335 @@ export default function SearchPage() {
   };
 
   // Components
-  const ProductCard = ({ product }: { product: any }) => (
-    <Link href={`/product/${product.slug}?style=0`}>
-      <Card className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-        <div className="relative aspect-square overflow-hidden bg-gray-100">
-          <Image
-            src={product.subProducts?.[0]?.images?.[0]?.url || "/placeholder.jpg"}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          {product.subProducts?.[0]?.discount > 0 && (
-            <Badge className="absolute top-1 sm:top-2 left-1 sm:left-2 bg-red-500 hover:bg-red-500 text-xs px-1 sm:px-2 py-0.5">
-              -{product.subProducts[0].discount}%
-            </Badge>
-          )}
-          {product.featured && (
-            <Badge className="absolute top-1 sm:top-2 right-1 sm:right-2 bg-yellow-500 hover:bg-yellow-500 text-xs px-1 sm:px-2 py-0.5">
-              <Star className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-              <span className="hidden sm:inline">Featured</span>
-              <span className="sm:hidden">★</span>
-            </Badge>
-          )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-        </div>
-        <CardContent className="p-2 sm:p-3">
-          <h3 className="font-semibold text-xs sm:text-sm truncate mb-1">{product.name}</h3>
-          <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-            <span className="font-bold text-sm sm:text-lg">
-              MVR {product.subProducts?.[0]?.sizes?.[0]?.price || 0}
-            </span>
+  const ProductCard = ({ product, viewMode = "grid" }: { product: any; viewMode?: "grid" | "list" }) => {
+    if (viewMode === "list") {
+      return (
+        <Link href={`/product/${product.slug}?style=0`}>
+          <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl dark:hover:shadow-cyan-500/20 transition-all duration-300 transform hover:-translate-y-1 bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50">
+            <div className="flex flex-col sm:flex-row">
+              {/* Image Section */}
+              <div className="relative w-full sm:w-32 md:w-36 lg:w-40 aspect-square sm:aspect-auto sm:h-32 md:h-36 lg:h-40 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-gray-900 dark:to-gray-800 flex-shrink-0">
+                <Image
+                  src={product.subProducts?.[0]?.images?.[0]?.url || "/placeholder.jpg"}
+                  alt={product.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                {product.subProducts?.[0]?.discount > 0 && (
+                  <Badge className="absolute top-1 left-1 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white text-xs px-1 py-0.5 shadow-lg border-0">
+                    -{product.subProducts[0].discount}%
+                  </Badge>
+                )}
+                {product.featured && (
+                  <Badge className="absolute top-1 right-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white text-xs px-1 py-0.5 shadow-lg border-0">
+                    <Star className="w-2 h-2 mr-0.5" />
+                    <span className="text-xs">★</span>
+                  </Badge>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:from-black/30 transition-all duration-300" />
+              </div>
+
+              {/* Content Section */}
+              <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
+                <div>
+                  <h3 className="font-semibold text-sm sm:text-base mb-1 line-clamp-2 text-slate-900 dark:text-white">{product.name}</h3>
+                  <p className="text-xs text-slate-600 dark:text-gray-400 mb-2 line-clamp-2">
+                    {product.description || "Premium quality product"}
+                  </p>
+                  
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-sm sm:text-lg bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+                      MVR {product.subProducts?.[0]?.sizes?.[0]?.price || 0}
+                    </span>
+                    {product.subProducts?.[0]?.discount > 0 && (
+                      <span className="text-xs text-slate-500 dark:text-gray-500 line-through">
+                        MVR {Math.round(product.subProducts[0].sizes[0].price / (1 - product.subProducts[0].discount / 100))}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-current text-yellow-400" />
+                      <span className="text-slate-700 dark:text-gray-300">{product.rating || 0}</span>
+                      <span className="text-slate-500 dark:text-gray-400 hidden sm:inline">({product.numReviews || 0})</span>
+                    </div>
+                    <span className="text-slate-600 dark:text-gray-400 truncate max-w-16">
+                      {product.brand || "VibeCart"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-gray-800">
+                  <div className="flex items-center gap-1 text-xs">
+                    {product.subProducts?.[0]?.sizes?.[0]?.qty > 0 ? (
+                      <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-800 dark:text-green-300 text-xs px-1 py-0 border-0">
+                        In Stock
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 text-red-800 dark:text-red-300 text-xs px-1 py-0 border-0">
+                        Out of Stock
+                      </Badge>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm" className="group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:to-blue-600 dark:group-hover:from-cyan-400 dark:group-hover:to-purple-500 group-hover:text-white group-hover:border-transparent transition-all duration-300 text-xs px-2 py-1 h-auto border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300">
+                    <ShoppingBag className="w-3 h-3 mr-1" />
+                    View
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      );
+    }
+
+    // Grid view (original)
+    return (
+      <Link href={`/product/${product.slug}?style=0`}>
+        <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl dark:hover:shadow-cyan-500/20 transition-all duration-300 transform hover:-translate-y-1 bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50">
+          <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-gray-900 dark:to-gray-800">
+            <Image
+              src={product.subProducts?.[0]?.images?.[0]?.url || "/placeholder.jpg"}
+              alt={product.name}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
             {product.subProducts?.[0]?.discount > 0 && (
-              <span className="text-xs sm:text-sm text-gray-500 line-through">
-                MVR {Math.round(product.subProducts[0].sizes[0].price / (1 - product.subProducts[0].discount / 100))}
-              </span>
+              <Badge className="absolute top-1 sm:top-2 left-1 sm:left-2 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white text-xs px-1 sm:px-2 py-0.5 shadow-lg border-0">
+                -{product.subProducts[0].discount}%
+              </Badge>
             )}
+            {product.featured && (
+              <Badge className="absolute top-1 sm:top-2 right-1 sm:right-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white text-xs px-1 sm:px-2 py-0.5 shadow-lg border-0">
+                <Star className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                <span className="hidden sm:inline">Featured</span>
+                <span className="sm:hidden">★</span>
+              </Badge>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:from-black/30 transition-all duration-300" />
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-1">
-              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current text-yellow-400" />
-              <span className="text-xs">{product.rating || 0}</span>
-              <span className="text-xs hidden sm:inline">({product.numReviews || 0})</span>
+          <CardContent className="p-2 sm:p-3">
+            <h3 className="font-semibold text-xs sm:text-sm truncate mb-1 text-slate-900 dark:text-white">{product.name}</h3>
+            <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+              <span className="font-bold text-sm sm:text-lg bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+                MVR {product.subProducts?.[0]?.sizes?.[0]?.price || 0}
+              </span>
+              {product.subProducts?.[0]?.discount > 0 && (
+                <span className="text-xs sm:text-sm text-slate-500 dark:text-gray-500 line-through">
+                  MVR {Math.round(product.subProducts[0].sizes[0].price / (1 - product.subProducts[0].discount / 100))}
+                </span>
+              )}
             </div>
-            <span className="text-xs truncate max-w-16 sm:max-w-none">{product.brand || "VibeCart"}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-
-  const BlogCard = ({ blog }: { blog: any }) => (
-    <Link href={`/blog/${blog.slug}`}>
-      <Card className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300">
-        <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
-          <Image
-            src={blog.featuredImage?.url || "/placeholder.jpg"}
-            alt={blog.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
-            <Badge className="mb-1 sm:mb-2 bg-purple-500 hover:bg-purple-500 text-xs px-1.5 sm:px-2 py-0.5">
-              {blog.category}
-            </Badge>
-            <h3 className="font-semibold text-white text-xs sm:text-sm line-clamp-2">
-              {blog.title}
-            </h3>
-          </div>
-        </div>
-        <CardContent className="p-2 sm:p-3">
-          <p className="text-xs text-gray-600 line-clamp-2 mb-1 sm:mb-2">
-            {blog.excerpt}
-          </p>
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-gray-400">
               <div className="flex items-center gap-1">
-                <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span>{blog.views || 0}</span>
+                <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current text-yellow-400" />
+                <span className="text-xs text-slate-700 dark:text-gray-300">{product.rating || 0}</span>
+                <span className="text-xs hidden sm:inline">({product.numReviews || 0})</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Heart className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span>{blog.likes || 0}</span>
+              <span className="text-xs truncate max-w-16 sm:max-w-none text-slate-600 dark:text-gray-400">{product.brand || "VibeCart"}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  };
+
+  const BlogCard = ({ blog, viewMode = "grid" }: { blog: any; viewMode?: "grid" | "list" }) => {
+    if (viewMode === "list") {
+      return (
+        <Link href={`/blog/${blog.slug}`}>
+          <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50">
+            <div className="flex flex-col sm:flex-row">
+              {/* Image Section */}
+              <div className="relative w-full sm:w-32 md:w-36 lg:w-40 aspect-[16/10] sm:aspect-square overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex-shrink-0">
+                <Image
+                  src={blog.featuredImage?.url || "/placeholder.jpg"}
+                  alt={blog.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                <Badge className="absolute top-1 left-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white text-xs px-1 py-0.5 shadow-lg border-0">
+                  {blog.category}
+                </Badge>
+              </div>
+
+              {/* Content Section */}
+              <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
+                <div>
+                  <h3 className="font-semibold text-sm sm:text-base mb-2 line-clamp-2 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                    {blog.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 line-clamp-3">
+                    {blog.excerpt}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      <span>{blog.views || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Heart className="w-3 h-3" />
+                      <span>{blog.likes || 0}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate max-w-20">
+                    <span className="font-medium">{blog.authorName}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <span className="truncate max-w-16 sm:max-w-none">{blog.authorName}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
+          </Card>
+        </Link>
+      );
+    }
 
-  const VendorCard = ({ vendor }: { vendor: any }) => (
-    <Link href={`/vendor/${vendor._id}`}>
-      <Card className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300">
-        <CardContent className="p-3 sm:p-4 text-center">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-2 sm:mb-3 flex items-center justify-center text-white text-base sm:text-xl font-bold">
-            {vendor.name.charAt(0).toUpperCase()}
+    // Grid view (original)
+    return (
+      <Link href={`/blog/${blog.slug}`}>
+        <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50">
+          <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800">
+            <Image
+              src={blog.featuredImage?.url || "/placeholder.jpg"}
+              alt={blog.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
+              <Badge className="mb-1 sm:mb-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white text-xs px-1.5 sm:px-2 py-0.5 shadow-lg border-0">
+                {blog.category}
+              </Badge>
+              <h3 className="font-semibold text-white text-xs sm:text-sm line-clamp-2">
+                {blog.title}
+              </h3>
+            </div>
           </div>
-          <h3 className="font-semibold text-xs sm:text-sm mb-1 truncate">{vendor.name}</h3>
-          <p className="text-xs text-gray-600 mb-1 sm:mb-2 line-clamp-2">
-            {vendor.description || "Professional vendor"}
-          </p>
-          <div className="flex items-center justify-center gap-1 sm:gap-2 text-xs text-gray-500">
-            <User className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            <span>Vendor</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
+          <CardContent className="p-2 sm:p-3">
+            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-1 sm:mb-2">
+              {blog.excerpt}
+            </p>
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1">
+                  <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  <span>{blog.views || 0}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Heart className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  <span>{blog.likes || 0}</span>
+                </div>
+              </div>
+              <span className="truncate max-w-16 sm:max-w-none">{blog.authorName}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  };
+
+  const VendorCard = ({ vendor, viewMode = "grid" }: { vendor: any; viewMode?: "grid" | "list" }) => {
+    if (viewMode === "list") {
+      return (
+        <Link href={`/vendor/${vendor._id}`}>
+          <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50">
+            <div className="flex items-center p-3 sm:p-4">
+              {/* Avatar */}
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm sm:text-lg font-bold mr-3 sm:mr-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                {vendor.name.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base mb-1 truncate bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">{vendor.name}</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2 line-clamp-2">
+                  {vendor.description || "Professional vendor"}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    <span>Vendor</span>
+                  </div>
+                  {vendor.productsCount && (
+                    <>
+                      <span>•</span>
+                      <span>{vendor.productsCount} items</span>
+                    </>
+                  )}
+                  {vendor.rating && (
+                    <>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-current text-yellow-400" />
+                        <span>{vendor.rating}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      );
+    }
+
+    // Grid view (original)
+    return (
+      <Link href={`/vendor/${vendor._id}`}>
+        <Card className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50">
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600 rounded-full mx-auto mb-2 sm:mb-3 flex items-center justify-center text-white text-base sm:text-xl font-bold shadow-lg group-hover:scale-110 transition-transform duration-300">
+              {vendor.name.charAt(0).toUpperCase()}
+            </div>
+            <h3 className="font-semibold text-xs sm:text-sm mb-1 truncate bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">{vendor.name}</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 sm:mb-2 line-clamp-2">
+              {vendor.description || "Professional vendor"}
+            </p>
+            <div className="flex items-center justify-center gap-1 sm:gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <User className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              <span>Vendor</span>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  };
 
   const FilterSheet = () => (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+        <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:from-blue-50 hover:to-purple-50 dark:hover:from-slate-700 dark:hover:to-slate-600 hover:border-blue-300 dark:hover:border-purple-500 hover:shadow-lg transition-all duration-300">
           <SlidersHorizontal className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
           Filters
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:w-80">
+      <SheetContent className="w-full sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
         <SheetHeader>
-          <SheetTitle className="text-base sm:text-lg">Search Filters</SheetTitle>
+          <SheetTitle className="text-base sm:text-lg bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Search Filters</SheetTitle>
         </SheetHeader>
         <div className="py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Category Filter */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Category</label>
+          <div className="p-4 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-blue-100 dark:border-slate-600">
+            <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Category</label>
             <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
-              <SelectTrigger className="h-10 sm:h-11">
+              <SelectTrigger className="h-10 sm:h-11 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 rounded-xl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
                 {PRODUCT_CATEGORIES.map(category => (
-                  <SelectItem key={category} value={category} className="text-sm">{category}</SelectItem>
+                  <SelectItem key={category} value={category} className="text-sm focus:bg-gradient-to-r focus:from-blue-50 focus:to-purple-50 dark:focus:from-slate-700 dark:focus:to-slate-600 rounded-lg">{category}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           {/* Price Range */}
-          <div>
-            <label className="text-sm font-medium mb-3 block">
+          <div className="p-4 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-purple-100 dark:border-slate-600">
+            <label className="text-sm font-medium mb-3 block text-slate-700 dark:text-slate-300">
               Price Range: MVR {filters.priceRange[0]} - MVR {filters.priceRange[1]}
             </label>
             <div className="px-2">
@@ -668,54 +859,54 @@ export default function SearchPage() {
                 max={1000}
                 min={0}
                 step={10}
-                className="w-full"
+                className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-blue-500 [&_[role=slider]]:to-purple-600 [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg"
               />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
               <span>MVR 0</span>
               <span>MVR 1000</span>
             </div>
           </div>
 
           {/* Quick Filters */}
-          <div className="space-y-4">
-            <label className="text-sm font-medium">Quick Filters</label>
+          <div className="space-y-4 p-4 bg-gradient-to-br from-green-50/50 to-blue-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-green-100 dark:border-slate-600">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Quick Filters</label>
             <div className="space-y-3">
-              <label className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+              <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 backdrop-blur-sm transition-all duration-200 group">
                 <input
                   type="checkbox"
                   checked={filters.inStock}
                   onChange={(e) => setFilters(prev => ({ ...prev, inStock: e.target.checked }))}
-                  className="rounded w-4 h-4"
+                  className="rounded w-4 h-4 text-blue-600 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
                 />
-                <span className="text-sm flex-1">In Stock Only</span>
+                <span className="text-sm flex-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">In Stock Only</span>
               </label>
-              <label className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+              <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 backdrop-blur-sm transition-all duration-200 group">
                 <input
                   type="checkbox"
                   checked={filters.featured}
                   onChange={(e) => setFilters(prev => ({ ...prev, featured: e.target.checked }))}
-                  className="rounded w-4 h-4"
+                  className="rounded w-4 h-4 text-purple-600 focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
                 />
-                <span className="text-sm flex-1">Featured Products</span>
+                <span className="text-sm flex-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">Featured Products</span>
               </label>
-              <label className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+              <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 backdrop-blur-sm transition-all duration-200 group">
                 <input
                   type="checkbox"
                   checked={filters.discount}
                   onChange={(e) => setFilters(prev => ({ ...prev, discount: e.target.checked }))}
-                  className="rounded w-4 h-4"
+                  className="rounded w-4 h-4 text-pink-600 focus:ring-pink-500/30 border-slate-300 dark:border-slate-600"
                 />
-                <span className="text-sm flex-1">On Sale</span>
+                <span className="text-sm flex-1 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors duration-200">On Sale</span>
               </label>
             </div>
           </div>
 
           {/* Clear Filters */}
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
             <Button 
               variant="outline" 
-              className="w-full"
+              className="w-full bg-gradient-to-r from-red-50 to-orange-50 dark:from-slate-800 dark:to-slate-700 border-red-200 dark:border-slate-600 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/20 dark:hover:to-orange-900/20 hover:border-red-300 dark:hover:border-red-500 text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-all duration-300"
               onClick={() => setFilters(prev => ({ 
                 ...prev, 
                 category: "All", 
@@ -882,7 +1073,7 @@ export default function SearchPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
-                type="search"
+                type="text"
                 placeholder="Try searching for 'MacBook' or 'iPhone'"
                 value={filters.query}
                 onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
@@ -916,26 +1107,26 @@ export default function SearchPage() {
     viewMode: 'grid' | 'list';
   }) => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-6 sm:mb-8 h-auto">
-        <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+      <TabsList className="grid w-full grid-cols-4 mb-6 sm:mb-8 h-auto bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-lg dark:shadow-purple-500/10 p-1">
+        <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 dark:data-[state=active]:from-cyan-400 dark:data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-slate-100 dark:hover:bg-gray-800/50 text-slate-700 dark:text-gray-300">
           <Search className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">All</span>
-          <span className="text-xs text-gray-500">({results.total})</span>
+          <span className="text-xs sm:text-sm font-medium">All</span>
+          <span className="text-xs opacity-75">({results.total})</span>
         </TabsTrigger>
-        <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+        <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 dark:data-[state=active]:from-cyan-400 dark:data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-slate-100 dark:hover:bg-gray-800/50 text-slate-700 dark:text-gray-300">
           <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">Products</span>
-          <span className="text-xs text-gray-500">({results.products.length})</span>
+          <span className="text-xs sm:text-sm font-medium">Products</span>
+          <span className="text-xs opacity-75">({results.products.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="blogs" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+        <TabsTrigger value="blogs" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 dark:data-[state=active]:from-cyan-400 dark:data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-slate-100 dark:hover:bg-gray-800/50 text-slate-700 dark:text-gray-300">
           <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">Blogs</span>
-          <span className="text-xs text-gray-500">({results.blogs.length})</span>
+          <span className="text-xs sm:text-sm font-medium">Blogs</span>
+          <span className="text-xs opacity-75">({results.blogs.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="vendors" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+        <TabsTrigger value="vendors" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 dark:data-[state=active]:from-cyan-400 dark:data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-slate-100 dark:hover:bg-gray-800/50 text-slate-700 dark:text-gray-300">
           <User className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">Vendors</span>
-          <span className="text-xs text-gray-500">({results.vendors.length})</span>
+          <span className="text-xs sm:text-sm font-medium">Vendors</span>
+          <span className="text-xs opacity-75">({results.vendors.length})</span>
         </TabsTrigger>
       </TabsList>
 
@@ -951,10 +1142,10 @@ export default function SearchPage() {
               <div className={`grid gap-3 sm:gap-4 ${
                 viewMode === "grid" 
                   ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
-                  : "grid-cols-1"
+                  : "grid-cols-1 lg:grid-cols-2"
               }`}>
                 {results.products.slice(0, 10).map((product, index) => (
-                  <ProductCard key={index} product={product} />
+                  <ProductCard key={index} product={product} viewMode={viewMode} />
                 ))}
               </div>
             </section>
@@ -966,9 +1157,13 @@ export default function SearchPage() {
                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                 Blogs ({results.blogs.length})
               </h3>
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid gap-3 sm:gap-4 ${
+                viewMode === "grid" 
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
+                  : "grid-cols-1 lg:grid-cols-2"
+              }`}>
                 {results.blogs.slice(0, 6).map((blog, index) => (
-                  <BlogCard key={index} blog={blog} />
+                  <BlogCard key={index} blog={blog} viewMode={viewMode} />
                 ))}
               </div>
             </section>
@@ -980,9 +1175,13 @@ export default function SearchPage() {
                 <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 Vendors ({results.vendors.length})
               </h3>
-              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <div className={`grid gap-3 sm:gap-4 ${
+                viewMode === "grid" 
+                  ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" 
+                  : "grid-cols-1 sm:grid-cols-2"
+              }`}>
                 {results.vendors.slice(0, 6).map((vendor, index) => (
-                  <VendorCard key={index} vendor={vendor} />
+                  <VendorCard key={index} vendor={vendor} viewMode={viewMode} />
                 ))}
               </div>
             </section>
@@ -995,28 +1194,36 @@ export default function SearchPage() {
         <div className={`grid gap-3 sm:gap-4 ${
           viewMode === "grid" 
             ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
-            : "grid-cols-1"
+            : "grid-cols-1 lg:grid-cols-2"
         }`}>
           {results.products.map((product, index) => (
-            <ProductCard key={index} product={product} />
+            <ProductCard key={index} product={product} viewMode={viewMode} />
           ))}
         </div>
       </TabsContent>
 
       {/* Blogs Only */}
       <TabsContent value="blogs">
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={`grid gap-4 sm:gap-6 ${
+          viewMode === "grid" 
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
+            : "grid-cols-1 lg:grid-cols-2"
+        }`}>
           {results.blogs.map((blog, index) => (
-            <BlogCard key={index} blog={blog} />
+            <BlogCard key={index} blog={blog} viewMode={viewMode} />
           ))}
         </div>
       </TabsContent>
 
       {/* Vendors Only */}
       <TabsContent value="vendors">
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className={`grid gap-3 sm:gap-4 ${
+          viewMode === "grid" 
+            ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" 
+            : "grid-cols-1 sm:grid-cols-2"
+        }`}>
           {results.vendors.map((vendor, index) => (
-            <VendorCard key={index} vendor={vendor} />
+            <VendorCard key={index} vendor={vendor} viewMode={viewMode} />
           ))}
         </div>
       </TabsContent>
@@ -1024,44 +1231,70 @@ export default function SearchPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen relative bg-white dark:bg-black">
+      {/* Background Gradients */}
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Light theme gradients - deeper colors */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/60 via-purple-100/40 to-emerald-100/50 dark:opacity-0 transition-opacity duration-500"></div>
+        
+        {/* Dark theme neon gradients - positioned in middle and bottom areas */}
+        <div className="absolute top-1/4 left-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500/25 via-blue-600/15 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-600/25 via-violet-700/15 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-[600px] h-[400px] bg-gradient-to-tr from-emerald-500/20 via-green-600/12 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[400px] bg-gradient-to-tl from-blue-600/20 via-indigo-700/12 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        
+        {/* Center gradient for depth - positioned in middle area */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/4 w-[700px] h-[300px] bg-gradient-to-r from-purple-600/12 via-blue-600/8 to-emerald-500/12 dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        
+        {/* Additional subtle gradients for lower section */}
+        <div className="absolute bottom-1/3 left-0 w-[400px] h-[300px] bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+        <div className="absolute bottom-1/2 right-0 w-[400px] h-[300px] bg-gradient-to-l from-pink-500/15 via-purple-500/10 to-transparent dark:opacity-100 opacity-0 transition-opacity duration-500 blur-3xl"></div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <Search className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold">Search</h1>
+            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+              <Search className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+              Search
+            </h1>
           </div>
 
           {/* Search Bar */}
           <div className="relative max-w-full sm:max-w-2xl mb-4 sm:mb-6">
-            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-            <Input
-              type="search"
-              placeholder="Search products, blogs, vendors..."
-              value={filters.query}
-              onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
-              onFocus={() => setShowSearchHistory(true)}
-              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
-              className="pl-10 sm:pl-12 pr-10 h-12 sm:h-14 text-base border-2 border-gray-200 dark:border-gray-700 focus:border-primary transition-colors"
-              autoFocus
-            />
-            {filters.query && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSearch}
-                className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-1.5"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl"></div>
+            <div className="relative bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-cyan-500/5">
+              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+              <Input
+                type="text"
+                placeholder="Search products, blogs, vendors..."
+                value={filters.query}
+                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+                onFocus={() => setShowSearchHistory(true)}
+                onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+                className="pl-10 sm:pl-12 pr-10 h-12 sm:h-14 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-cyan-400/50 transition-all duration-300 rounded-2xl placeholder:text-slate-400 dark:placeholder:text-gray-400 text-slate-900 dark:text-white"
+                autoFocus
+              />
+              {filters.query && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearSearch}
+                  className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 hover:bg-slate-100 dark:hover:bg-gray-800/50 rounded-full p-1.5 transition-colors duration-200"
+                >
+                  <X className="w-4 h-4 text-slate-400 dark:text-gray-400" />
+                </Button>
+              )}
+            </div>
 
             {/* Search History Dropdown */}
             {showSearchHistory && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 bg-white/95 dark:bg-black/90 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-2xl dark:shadow-cyan-500/10 z-50 max-h-60 overflow-y-auto mt-2">
                 <div className="p-2">
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 px-2">Recent Searches</div>
+                  <div className="text-xs font-medium text-slate-500 dark:text-gray-400 mb-2 px-2">Recent Searches</div>
                   {searchHistory.map((term, index) => (
                     <button
                       key={index}
@@ -1069,13 +1302,13 @@ export default function SearchPage() {
                         setFilters(prev => ({ ...prev, query: term, page: 1 }));
                         setShowSearchHistory(false);
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 rounded-xl text-sm flex items-center gap-2 transition-all duration-200 text-slate-900 dark:text-gray-200"
                     >
-                      <Search className="w-3 h-3 text-gray-400" />
+                      <Search className="w-3 h-3 text-slate-400 dark:text-gray-500" />
                       <span className="flex-1">{term}</span>
                     </button>
                   ))}
-                  <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                  <div className="border-t border-slate-200 dark:border-gray-800 mt-2 pt-2">
                     <button
                       onClick={() => {
                         setSearchHistory([]);
@@ -1084,7 +1317,7 @@ export default function SearchPage() {
                         }
                         setShowSearchHistory(false);
                       }}
-                      className="w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs text-gray-500 dark:text-gray-400"
+                      className="w-full text-left px-3 py-1 hover:bg-slate-100 dark:hover:bg-gray-800/50 rounded-xl text-xs text-slate-500 dark:text-gray-400 transition-colors duration-200"
                     >
                       Clear history
                     </button>
@@ -1106,7 +1339,7 @@ export default function SearchPage() {
                     saveCompleteSearch(searchName.trim());
                   }
                 }}
-                className="text-xs"
+                className="text-xs bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 border-blue-200 dark:border-slate-600 hover:from-blue-100 hover:to-purple-100 dark:hover:from-slate-700 dark:hover:to-slate-600 transition-all duration-300"
               >
                 Save Search
               </Button>
@@ -1120,7 +1353,7 @@ export default function SearchPage() {
                       if (saved) loadSavedSearch(saved);
                     }
                   }}
-                  className="px-2 py-1 border rounded text-xs bg-white dark:bg-gray-800"
+                  className="px-2 py-1 border rounded-xl text-xs bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 transition-all duration-300"
                 >
                   <option value="">Load Saved Search</option>
                   {savedSearches.map((saved) => (
@@ -1136,10 +1369,10 @@ export default function SearchPage() {
           {/* Trending Searches */}
           {!filters.query && (
             <div className="mb-4 sm:mb-6">
-              <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-gray-600 dark:text-gray-400">
+              <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-slate-600 dark:text-slate-400">
                 Trending Categories
                 {!trendingLoading && trendingSubcategories.length > 0 && (
-                  <span className="ml-2 text-xs text-gray-500">({trendingSubcategories.length} popular)</span>
+                  <span className="ml-2 text-xs text-slate-500">({trendingSubcategories.length} popular)</span>
                 )}
               </h3>
               
@@ -1148,7 +1381,7 @@ export default function SearchPage() {
                   {[...Array(6)].map((_, index) => (
                     <div
                       key={index}
-                      className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+                      className="h-8 w-20 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-full animate-pulse"
                     />
                   ))}
                 </div>
@@ -1161,17 +1394,19 @@ export default function SearchPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setFilters(prev => ({ ...prev, query: trend.name }))}
-                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 h-auto hover:bg-primary hover:text-primary-foreground transition-colors group"
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 h-auto bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 hover:border-blue-300 dark:hover:border-purple-500 hover:shadow-lg hover:scale-105 transition-all duration-300 group"
                         title={`${trend.productCount} products in ${trend.parentCategory}`}
                       >
-                        <span>{trend.name}</span>
-                        <span className="ml-1 text-xs opacity-70 group-hover:opacity-100">
+                        <span className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-300 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-blue-600 group-hover:to-purple-600 dark:group-hover:from-blue-400 dark:group-hover:to-purple-400">
+                          {trend.name}
+                        </span>
+                        <span className="ml-1 text-xs opacity-70 group-hover:opacity-100 text-slate-500 dark:text-slate-400">
                           ({trend.productCount})
                         </span>
                       </Button>
                     ))
                   ) : (
-                    <p className="text-xs text-gray-500 italic">No trending categories available</p>
+                    <p className="text-xs text-slate-500 italic">No trending categories available</p>
                   )}
                 </div>
               )}
@@ -1187,12 +1422,12 @@ export default function SearchPage() {
 
             {/* Results Header */}
             {!isLoading && searchResults.total > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 p-4 sm:p-6 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl shadow-lg">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <h2 className="text-lg sm:text-xl font-semibold">
+                  <h2 className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                     {searchResults.total} results for "{filters.query}"
                   </h2>
-                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 text-blue-800 dark:text-blue-200 border-0">
                     Page {searchResults.pagination.currentPage}
                   </Badge>
                 </div>
@@ -1203,24 +1438,28 @@ export default function SearchPage() {
                   <Select value={filters.sortBy} onValueChange={(value) => 
                     setFilters(prev => ({ ...prev, sortBy: value, page: 1 }))
                   }>
-                    <SelectTrigger className="w-full sm:w-48 text-xs sm:text-sm">
+                    <SelectTrigger className="w-full sm:w-48 text-xs sm:text-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
                       {SORT_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm focus:bg-gradient-to-r focus:from-blue-50 focus:to-purple-50 dark:focus:from-slate-700 dark:focus:to-slate-600 rounded-lg">
                           {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   
-                  <div className="flex border rounded-lg overflow-hidden">
+                  <div className="flex border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setViewMode('grid')}
-                      className="rounded-none px-2 sm:px-3"
+                      className={`rounded-none px-2 sm:px-3 ${
+                        viewMode === 'grid' 
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                          : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-slate-700 dark:hover:to-slate-600'
+                      } transition-all duration-300`}
                     >
                       <Grid className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
@@ -1228,7 +1467,11 @@ export default function SearchPage() {
                       variant={viewMode === 'list' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setViewMode('list')}
-                      className="rounded-none px-2 sm:px-3"
+                      className={`rounded-none px-2 sm:px-3 ${
+                        viewMode === 'list' 
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                          : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-slate-700 dark:hover:to-slate-600'
+                      } transition-all duration-300`}
                     >
                       <List className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
@@ -1258,9 +1501,14 @@ export default function SearchPage() {
         {/* Welcome State - No Search Query */}
         {!filters.query && (
           <div className="text-center py-8 sm:py-12 lg:py-16">
-            <Search className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-gray-300 mx-auto mb-4 sm:mb-6" />
-            <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Start your search</h2>
-            <p className="text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base px-4">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
+              <div className="relative p-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 mx-auto flex items-center justify-center shadow-2xl">
+                <Search className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
+              </div>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-slate-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">Start your search</h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base px-4">
               Search for products, blogs, and vendors. Use the search bar above or try one of the trending categories.
             </p>
           </div>

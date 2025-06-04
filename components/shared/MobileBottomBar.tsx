@@ -1,27 +1,18 @@
 "use client";
 import { useStore, useAtom } from "jotai";
-import { Grid, Home, Menu, ShoppingBag, User } from "lucide-react";
+import { Grid, Home, Search, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   hamburgerMenuState,
-  cartMenuState,
   accountMenuState,
 } from "./navbar/store";
-import { useAuth } from "@clerk/nextjs";
-import { useCartStore } from "@/store/cart";
 
 const MobileBottomBar = () => {
   const pathname = usePathname();
-  const { isSignedIn } = useAuth();
-  
-  const getCartItemCount = useCartStore((state: any) => state.getCartItemCount);
-  const isAuthenticated = useCartStore((state: any) => state.isAuthenticated);
+  const router = useRouter();
   
   const [hamMenuOpen, setHamMenuOpen] = useAtom(hamburgerMenuState, {
-    store: useStore(),
-  });
-  const [cartMenuOpen, setCartMenuOpen] = useAtom(cartMenuState, {
     store: useStore(),
   });
   const [accountMenuOpen, setAccountMenuOpen] = useAtom(accountMenuState, {
@@ -32,13 +23,13 @@ const MobileBottomBar = () => {
     setHamMenuOpen(true);
     console.log("ham", hamMenuOpen);
   };
-  const handleOnClickCartMenu = () => {
-    setCartMenuOpen(true);
-    console.log("cart", cartMenuOpen);
-  };
   const handleOnClickAccountMenu = () => {
     setAccountMenuOpen(true);
     console.log("acc", accountMenuOpen);
+  };
+
+  const handleOnClickSearch = () => {
+    router.push('/search');
   };
 
   // Helper function to determine if a route is active
@@ -86,20 +77,15 @@ const MobileBottomBar = () => {
           <span className="text-xs mt-1 font-medium">Shop</span>
         </Link>
         <button
-          onClick={handleOnClickCartMenu}
-          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 relative ${
-            cartMenuOpen
+          onClick={handleOnClickSearch}
+          className={`flex flex-col items-center justify-center transition-colors min-w-0 flex-1 py-2 ${
+            isActive("/search")
               ? "text-orange-500"
               : "text-muted-foreground hover:text-orange-500"
           }`}
         >
-          <ShoppingBag size={22} />
-          {isSignedIn && isAuthenticated && getCartItemCount() > 0 && (
-            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-orange-500 rounded-full min-w-[18px]">
-              {getCartItemCount()}
-            </span>
-          )}
-          <span className="text-xs mt-1 font-medium">Cart</span>
+          <Search size={22} />
+          <span className="text-xs mt-1 font-medium">Search</span>
         </button>
         <button
           onClick={handleOnClickAccountMenu}
