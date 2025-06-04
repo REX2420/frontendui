@@ -33,6 +33,60 @@ export class CacheInvalidation {
   }
 
   /**
+   * Invalidate all blog-related caches
+   * Call this when any blog is created, updated, or deleted
+   */
+  static async invalidateBlogs() {
+    try {
+      console.log('🗑️ Invalidating all blog caches...');
+      
+      // Invalidate all blog-related tags
+      revalidateTag('blogs');
+      revalidateTag('blog');
+      revalidateTag('homepage'); // Blogs appear on homepage
+      revalidateTag('featured-blogs');
+      revalidateTag('published-blogs');
+      revalidateTag('blog-categories');
+      
+      // Also invalidate specific paths that show blogs
+      revalidatePath('/');
+      revalidatePath('/blog');
+      
+      console.log('✅ Blog caches invalidated successfully');
+    } catch (error) {
+      console.error('❌ Error invalidating blog caches:', error);
+    }
+  }
+
+  /**
+   * Invalidate specific blog cache
+   * Call this when a specific blog is updated
+   */
+  static async invalidateBlog(blogId: string, slug?: string) {
+    try {
+      console.log(`🗑️ Invalidating cache for blog ${blogId}...`);
+      
+      // Invalidate the specific blog
+      revalidateTag('blog');
+      
+      // Also invalidate general blog listings since this blog might appear there
+      revalidateTag('blogs');
+      revalidateTag('homepage');
+      revalidateTag('featured-blogs');
+      revalidateTag('published-blogs');
+      
+      // Invalidate the specific blog page if slug is provided
+      if (slug) {
+        revalidatePath(`/blog/${slug}`);
+      }
+      
+      console.log(`✅ Blog ${blogId} cache invalidated successfully`);
+    } catch (error) {
+      console.error(`❌ Error invalidating cache for blog ${blogId}:`, error);
+    }
+  }
+
+  /**
    * Invalidate specific product cache
    * Call this when a specific product is updated
    */
@@ -77,6 +131,23 @@ export class CacheInvalidation {
   }
 
   /**
+   * Invalidate blog categories
+   * Call this when blog categories change
+   */
+  static async invalidateBlogCategories() {
+    try {
+      console.log('🗑️ Invalidating blog category caches...');
+      
+      revalidateTag('blog-categories');
+      revalidatePath('/blog');
+      
+      console.log('✅ Blog category caches invalidated successfully');
+    } catch (error) {
+      console.error('❌ Error invalidating blog category caches:', error);
+    }
+  }
+
+  /**
    * Invalidate homepage caches
    * Call this when featured products or homepage content changes
    */
@@ -88,6 +159,8 @@ export class CacheInvalidation {
       revalidateTag('featured');
       revalidateTag('top-selling');
       revalidateTag('new-arrivals');
+      revalidateTag('featured-blogs');
+      revalidateTag('published-blogs');
       revalidatePath('/');
       
       console.log('✅ Homepage caches invalidated successfully');
@@ -108,17 +181,22 @@ export class CacheInvalidation {
       const allTags = [
         'products', 
         'product', 
+        'blogs',
+        'blog',
         'homepage', 
         'categories', 
         'top-selling', 
         'new-arrivals', 
-        'featured'
+        'featured',
+        'featured-blogs',
+        'published-blogs',
+        'blog-categories'
       ];
       
       allTags.forEach(tag => revalidateTag(tag));
       
       // Invalidate key paths
-      const keyPaths = ['/', '/shop', '/categories'];
+      const keyPaths = ['/', '/shop', '/categories', '/blog'];
       keyPaths.forEach(path => revalidatePath(path));
       
       console.log('✅ All caches invalidated successfully');

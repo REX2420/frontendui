@@ -37,6 +37,70 @@ export class ClientCacheUtils {
   }
 
   /**
+   * Invalidate all blog caches
+   * Call this after creating, updating, or deleting any blog
+   */
+  static async invalidateBlogs(): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch('/api/revalidate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'blogs'
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Blog caches invalidated successfully');
+        return { success: true, message: 'Blog caches updated successfully' };
+      } else {
+        console.warn('⚠️ Blog cache invalidation failed:', result.message);
+        return { success: false, message: result.message || 'Blog cache invalidation failed' };
+      }
+    } catch (error) {
+      console.error('❌ Error calling blog cache invalidation:', error);
+      return { success: false, message: 'Failed to update blog caches' };
+    }
+  }
+
+  /**
+   * Invalidate specific blog cache
+   * Call this after updating a specific blog
+   */
+  static async invalidateBlog(blogId: string, slug?: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch('/api/revalidate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'blog',
+          blogId,
+          slug
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Blog ${blogId} cache invalidated successfully`);
+        return { success: true, message: 'Blog cache updated successfully' };
+      } else {
+        console.warn('⚠️ Blog cache invalidation failed:', result.message);
+        return { success: false, message: result.message || 'Blog cache invalidation failed' };
+      }
+    } catch (error) {
+      console.error('❌ Error calling blog cache invalidation:', error);
+      return { success: false, message: 'Failed to update blog cache' };
+    }
+  }
+
+  /**
    * Invalidate specific product cache
    * Call this after updating a specific product
    */
@@ -128,6 +192,37 @@ export class ClientCacheUtils {
     } catch (error) {
       console.error('❌ Error calling category cache invalidation:', error);
       return { success: false, message: 'Failed to update category caches' };
+    }
+  }
+
+  /**
+   * Invalidate blog category caches
+   * Call this when blog categories change
+   */
+  static async invalidateBlogCategories(): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch('/api/revalidate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'blog-categories'
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Blog category caches invalidated successfully');
+        return { success: true, message: 'Blog category caches updated successfully' };
+      } else {
+        console.warn('⚠️ Blog category cache invalidation failed:', result.message);
+        return { success: false, message: result.message || 'Blog category cache invalidation failed' };
+      }
+    } catch (error) {
+      console.error('❌ Error calling blog category cache invalidation:', error);
+      return { success: false, message: 'Failed to update blog category caches' };
     }
   }
 } 

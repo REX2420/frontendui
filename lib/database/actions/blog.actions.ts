@@ -3,9 +3,27 @@
 import { handleError } from "@/lib/utils";
 import { connectToDatabase } from "../connect";
 import Blog from "../models/blog.model";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 
-// Get published blogs with 12-hour cache for home page
+// Helper function to invalidate blog caches
+function invalidateBlogCaches() {
+  try {
+    console.log('🗑️ Invalidating all blog caches...');
+    
+    // Invalidate all blog-related tags
+    revalidateTag('blogs');
+    revalidateTag('blog');
+    revalidateTag('homepage');
+    revalidateTag('featured-blogs');
+    revalidateTag('blog-categories');
+    
+    console.log('✅ Blog caches invalidated successfully');
+  } catch (error) {
+    console.error('❌ Error invalidating blog caches:', error);
+  }
+}
+
+// Get published blogs with 30-minute cache for home page
 export const getPublishedBlogsForHome = unstable_cache(
   async (limit: number = 6) => {
     try {
@@ -40,11 +58,12 @@ export const getPublishedBlogsForHome = unstable_cache(
   },
   ["published_blogs_home"],
   {
-    revalidate: 43200, // 12 hours
+    revalidate: 1800, // 30 minutes (consistent with products)
+    tags: ["blogs", "homepage", "published-blogs"],
   }
 );
 
-// Get featured blogs with 12-hour cache
+// Get featured blogs with 30-minute cache
 export const getFeaturedBlogsForHome = unstable_cache(
   async (limit: number = 3) => {
     try {
@@ -74,11 +93,12 @@ export const getFeaturedBlogsForHome = unstable_cache(
   },
   ["featured_blogs_home"],
   {
-    revalidate: 43200, // 12 hours
+    revalidate: 1800, // 30 minutes
+    tags: ["blogs", "homepage", "featured-blogs"],
   }
 );
 
-// Get blogs by category with 12-hour cache
+// Get blogs by category with 30-minute cache
 export const getBlogsByCategory = unstable_cache(
   async (category: string, limit: number = 6) => {
     try {
@@ -108,11 +128,12 @@ export const getBlogsByCategory = unstable_cache(
   },
   ["blogs_by_category"],
   {
-    revalidate: 43200, // 12 hours
+    revalidate: 1800, // 30 minutes
+    tags: ["blogs", "blog-categories"],
   }
 );
 
-// Get blog categories with 12-hour cache
+// Get blog categories with 30-minute cache
 export const getBlogCategories = unstable_cache(
   async () => {
     try {
@@ -136,6 +157,50 @@ export const getBlogCategories = unstable_cache(
   },
   ["blog_categories"],
   {
-    revalidate: 43200, // 12 hours
+    revalidate: 1800, // 30 minutes
+    tags: ["blogs", "blog-categories"],
   }
-); 
+);
+
+// Get single blog by slug with 30-minute cache
+export const getSingleBlog = unstable_cache(
+  async (slug: string) => {
+    try {
+      await connectToDatabase();
+      
+      const blog = await Blog.findOne({ 
+        slug, 
+        status: "published" 
+      }).lean();
+
+      if (!blog) {
+        return {
+          success: false,
+          blog: null,
+          message: "Blog not found",
+        };
+      }
+
+      return {
+        success: true,
+        blog: JSON.parse(JSON.stringify(blog)),
+        message: "Successfully fetched blog",
+      };
+    } catch (error) {
+      handleError(error);
+      return {
+        success: false,
+        blog: null,
+        message: "Failed to fetch blog",
+      };
+    }
+  },
+  ["single_blog"],
+  {
+    revalidate: 1800, // 30 minutes
+    tags: ["blog", "blogs"],
+  }
+);
+
+// Export the cache invalidation function for use in other files
+export { invalidateBlogCaches }; 

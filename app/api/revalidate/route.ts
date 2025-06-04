@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, productId, slug } = body;
+    const { type, productId, blogId, slug } = body;
 
-    console.log('🔄 Manual cache revalidation requested:', { type, productId, slug });
+    console.log('🔄 Manual cache revalidation requested:', { type, productId, blogId, slug });
 
     switch (type) {
       case 'product':
@@ -48,12 +48,52 @@ export async function POST(request: NextRequest) {
         console.log('✅ All product caches invalidated');
         break;
 
+      case 'blog':
+        // Invalidate specific blog
+        revalidateTag('blog');
+        revalidateTag('blogs');
+        revalidateTag('homepage');
+        revalidateTag('featured-blogs');
+        revalidateTag('published-blogs');
+        
+        if (slug) {
+          revalidatePath(`/blog/${slug}`);
+        }
+        
+        console.log(`✅ Blog cache invalidated for: ${blogId}`);
+        break;
+
+      case 'blogs':
+        // Invalidate all blog-related caches
+        revalidateTag('blogs');
+        revalidateTag('blog');
+        revalidateTag('homepage');
+        revalidateTag('featured-blogs');
+        revalidateTag('published-blogs');
+        revalidateTag('blog-categories');
+        
+        revalidatePath('/');
+        revalidatePath('/blog');
+        
+        console.log('✅ All blog caches invalidated');
+        break;
+
+      case 'blog-categories':
+        // Invalidate blog category caches
+        revalidateTag('blog-categories');
+        revalidatePath('/blog');
+        
+        console.log('✅ Blog category caches invalidated');
+        break;
+
       case 'homepage':
         // Invalidate homepage-specific caches
         revalidateTag('homepage');
         revalidateTag('featured');
         revalidateTag('top-selling');
         revalidateTag('new-arrivals');
+        revalidateTag('featured-blogs');
+        revalidateTag('published-blogs');
         revalidatePath('/');
         
         console.log('✅ Homepage caches invalidated');
