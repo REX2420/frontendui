@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Grid, List, SlidersHorizontal, X, Star, Eye, Heart, ShoppingBag, User, FileText } from "lucide-react";
+import { Search, Filter, Grid, List, SlidersHorizontal, X, Star, Eye, Heart, ShoppingBag, User, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,8 @@ interface SearchFilters {
   inStock: boolean;
   featured: boolean;
   discount: boolean;
+  page: number;
+  limit: number;
 }
 
 interface SearchResults {
@@ -32,6 +34,14 @@ interface SearchResults {
   blogs: any[];
   vendors: any[];
   total: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalResults: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    limit: number;
+  };
 }
 
 interface TrendingSubcategory {
@@ -69,7 +79,15 @@ export default function SearchPage() {
     products: [],
     blogs: [],
     vendors: [],
-    total: 0
+    total: 0,
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalResults: 0,
+      hasNext: false,
+      hasPrev: false,
+      limit: 10
+    }
   });
   
   const [filters, setFilters] = useState<SearchFilters>({
@@ -79,13 +97,15 @@ export default function SearchPage() {
     sortBy: "relevance",
     inStock: false,
     featured: false,
-    discount: false
+    discount: false,
+    page: 1,
+    limit: 10
   });
 
   // Search function
   const performSearch = useCallback(async () => {
     if (!filters.query.trim()) {
-      setSearchResults({ products: [], blogs: [], vendors: [], total: 0 });
+      setSearchResults({ products: [], blogs: [], vendors: [], total: 0, pagination: { currentPage: 1, totalPages: 1, totalResults: 0, hasNext: false, hasPrev: false, limit: 10 } });
       return;
     }
 
@@ -103,12 +123,14 @@ export default function SearchPage() {
           sortBy: filters.sortBy,
           inStock: filters.inStock.toString(),
           featured: filters.featured.toString(),
-          discount: filters.discount.toString()
+          discount: filters.discount.toString(),
+          page: filters.page.toString(),
+          limit: filters.limit.toString()
         })}`);
         
         if (productResponse.ok) {
           const productData = await productResponse.json();
-          products = productData.success ? productData.data : [];
+          products = productData.success ? productData.products : [];
         }
       } catch (error) {
         // Fallback to existing product search function
@@ -124,10 +146,10 @@ export default function SearchPage() {
 
       // Search blogs
       try {
-        const blogResponse = await fetch(`/api/search/blogs?q=${encodeURIComponent(filters.query)}`);
+        const blogResponse = await fetch(`/api/search/blogs?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`);
         if (blogResponse.ok) {
           const blogData = await blogResponse.json();
-          blogs = blogData.success ? blogData.data : [];
+          blogs = blogData.success ? blogData.blogs || blogData.data || [] : [];
         }
       } catch (error) {
         // Fallback: search blogs using existing API
@@ -145,27 +167,38 @@ export default function SearchPage() {
 
       // Search vendors
       try {
-        const vendorResponse = await fetch(`/api/search/vendors?q=${encodeURIComponent(filters.query)}`);
+        const vendorResponse = await fetch(`/api/search/vendors?q=${encodeURIComponent(filters.query)}&page=${filters.page}&limit=${Math.ceil(filters.limit / 3)}`);
         if (vendorResponse.ok) {
           const vendorData = await vendorResponse.json();
-          vendors = vendorData.success ? vendorData.data : [];
+          vendors = vendorData.success ? vendorData.vendors || vendorData.data || [] : [];
         }
       } catch (error) {
         console.warn("Vendor search not available yet:", error);
         vendors = [];
       }
 
+      const totalResults = (products?.length || 0) + (blogs?.length || 0) + (vendors?.length || 0);
+      const calculatedTotalPages = Math.max(1, Math.ceil(totalResults / filters.limit));
+
       setSearchResults({
         products: Array.isArray(products) ? products : [],
         blogs: Array.isArray(blogs) ? blogs : [],
         vendors: Array.isArray(vendors) ? vendors : [],
-        total: (products?.length || 0) + (blogs?.length || 0) + (vendors?.length || 0)
+        total: totalResults,
+        pagination: {
+          currentPage: filters.page,
+          totalPages: calculatedTotalPages,
+          totalResults,
+          hasNext: filters.page < calculatedTotalPages,
+          hasPrev: filters.page > 1,
+          limit: filters.limit
+        }
       });
       
     } catch (error) {
       handleError(error);
       toast.error("Search failed. Please try again.");
-      setSearchResults({ products: [], blogs: [], vendors: [], total: 0 });
+      setSearchResults({ products: [], blogs: [], vendors: [], total: 0, pagination: { currentPage: 1, totalPages: 1, totalResults: 0, hasNext: false, hasPrev: false, limit: 10 } });
     } finally {
       setIsLoading(false);
     }
@@ -198,16 +231,45 @@ export default function SearchPage() {
     }
   }, []);
 
-  // Update URL params
+  // URL parameter functions  
   const updateUrlParams = useCallback(() => {
     const params = new URLSearchParams();
-    if (filters.query) params.set("q", filters.query);
-    if (filters.category !== "All") params.set("category", filters.category);
-    if (filters.sortBy !== "relevance") params.set("sort", filters.sortBy);
+    if (filters.query) params.set('q', filters.query);
+    if (filters.category !== 'All') params.set('category', filters.category);
+    if (filters.priceRange[0] !== 0) params.set('minPrice', filters.priceRange[0].toString());
+    if (filters.priceRange[1] !== 1000) params.set('maxPrice', filters.priceRange[1].toString());
+    if (filters.sortBy !== 'relevance') params.set('sortBy', filters.sortBy);
+    if (filters.inStock) params.set('inStock', 'true');
+    if (filters.featured) params.set('featured', 'true');
+    if (filters.discount) params.set('discount', 'true');
+    if (filters.page !== 1) params.set('page', filters.page.toString());
+    if (filters.limit !== 10) params.set('limit', filters.limit.toString());
     
-    const newUrl = params.toString() ? `/search?${params.toString()}` : '/search';
-    router.replace(newUrl, { scroll: false });
-  }, [filters, router]);
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [filters]);
+
+  const loadFromUrlParams = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const newFilters = {
+      query: params.get('q') || '',
+      category: params.get('category') || 'All',
+      priceRange: [
+        parseInt(params.get('minPrice') || '0'),
+        parseInt(params.get('maxPrice') || '1000')
+      ] as [number, number],
+      sortBy: params.get('sortBy') || 'relevance',
+      inStock: params.get('inStock') === 'true',
+      featured: params.get('featured') === 'true',
+      discount: params.get('discount') === 'true',
+      page: parseInt(params.get('page') || '1'),
+      limit: parseInt(params.get('limit') || '10')
+    };
+    
+    setFilters(newFilters);
+  }, []);
 
   // Effects
   useEffect(() => {
@@ -231,6 +293,31 @@ export default function SearchPage() {
       searchInput.focus();
     }
   }, []);
+
+  // Handle functions
+  const handleClearSearch = () => {
+    setFilters({
+      query: '',
+      category: 'All',
+      priceRange: [0, 1000],
+      sortBy: 'relevance',
+      inStock: false,
+      featured: false,
+      discount: false,
+      page: 1,
+      limit: 10
+    });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+    // Smooth scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setFilters(prev => ({ ...prev, limit: newLimit, page: 1 })); // Reset to page 1 when changing limit
+  };
 
   // Components
   const ProductCard = ({ product }: { product: any }) => (
@@ -438,7 +525,9 @@ export default function SearchPage() {
                 priceRange: [0, 1000], 
                 inStock: false, 
                 featured: false, 
-                discount: false 
+                discount: false,
+                page: 1,
+                limit: 10
               }))}
             >
               Clear All Filters
@@ -447,6 +536,223 @@ export default function SearchPage() {
         </div>
       </SheetContent>
     </Sheet>
+  );
+
+  const PaginationComponent = () => {
+    const { currentPage, totalPages, hasNext, hasPrev } = searchResults.pagination;
+    
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing page {currentPage} of {totalPages} ({searchResults.pagination.totalResults} total results)
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={!hasPrev}
+            className="text-xs sm:text-sm"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Previous
+          </Button>
+          
+          {/* Page numbers */}
+          <div className="flex gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum = Math.max(1, currentPage - 2) + i;
+              if (pageNum > totalPages) return null;
+              
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(pageNum)}
+                  className="w-8 h-8 p-0 text-xs"
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!hasNext}
+            className="text-xs sm:text-sm"
+          >
+            Next
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+        
+        {/* Results per page selector */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-600 dark:text-gray-400">Show:</span>
+          <select
+            value={filters.limit}
+            onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+            className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <span className="text-gray-600 dark:text-gray-400">per page</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Loading Components
+  const SearchResultsSkeleton = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {[...Array(8)].map((_, index) => (
+          <div key={index} className="border rounded-lg overflow-hidden">
+            <div className="aspect-square bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            <div className="p-3 sm:p-4 space-y-2">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 animate-pulse" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const EmptyState = () => (
+    <div className="text-center py-12 sm:py-16">
+      <Search className="w-16 h-16 sm:w-20 sm:h-20 mx-auto text-gray-300 mb-4 sm:mb-6" />
+      <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">No results found</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
+        Try adjusting your search terms or filters to find what you're looking for.
+      </p>
+      <Button onClick={handleClearSearch} variant="outline">
+        Clear all filters
+      </Button>
+    </div>
+  );
+
+  const SearchResultsGrid = ({ results, activeTab, viewMode }: {
+    results: SearchResults;
+    activeTab: string;
+    viewMode: 'grid' | 'list';
+  }) => (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="grid w-full grid-cols-4 mb-6 sm:mb-8 h-auto">
+        <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+          <Search className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm">All</span>
+          <span className="text-xs text-gray-500">({results.total})</span>
+        </TabsTrigger>
+        <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+          <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm">Products</span>
+          <span className="text-xs text-gray-500">({results.products.length})</span>
+        </TabsTrigger>
+        <TabsTrigger value="blogs" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+          <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm">Blogs</span>
+          <span className="text-xs text-gray-500">({results.blogs.length})</span>
+        </TabsTrigger>
+        <TabsTrigger value="vendors" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
+          <User className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm">Vendors</span>
+          <span className="text-xs text-gray-500">({results.vendors.length})</span>
+        </TabsTrigger>
+      </TabsList>
+
+      {/* All Results */}
+      <TabsContent value="all">
+        <div className="space-y-6 sm:space-y-8">
+          {results.products.length > 0 && (
+            <section>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                Products ({results.products.length})
+              </h3>
+              <div className={`grid gap-3 sm:gap-4 ${
+                viewMode === "grid" 
+                  ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
+                  : "grid-cols-1"
+              }`}>
+                {results.products.slice(0, 10).map((product, index) => (
+                  <ProductCard key={index} product={product} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {results.blogs.length > 0 && (
+            <section>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                Blogs ({results.blogs.length})
+              </h3>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {results.blogs.slice(0, 6).map((blog, index) => (
+                  <BlogCard key={index} blog={blog} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {results.vendors.length > 0 && (
+            <section>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                Vendors ({results.vendors.length})
+              </h3>
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                {results.vendors.slice(0, 6).map((vendor, index) => (
+                  <VendorCard key={index} vendor={vendor} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </TabsContent>
+
+      {/* Products Only */}
+      <TabsContent value="products">
+        <div className={`grid gap-3 sm:gap-4 ${
+          viewMode === "grid" 
+            ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
+            : "grid-cols-1"
+        }`}>
+          {results.products.map((product, index) => (
+            <ProductCard key={index} product={product} />
+          ))}
+        </div>
+      </TabsContent>
+
+      {/* Blogs Only */}
+      <TabsContent value="blogs">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {results.blogs.map((blog, index) => (
+            <BlogCard key={index} blog={blog} />
+          ))}
+        </div>
+      </TabsContent>
+
+      {/* Vendors Only */}
+      <TabsContent value="vendors">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {results.vendors.map((vendor, index) => (
+            <VendorCard key={index} vendor={vendor} />
+          ))}
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 
   return (
@@ -466,17 +772,18 @@ export default function SearchPage() {
               type="search"
               placeholder="Search products, blogs, vendors..."
               value={filters.query}
-              onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
-              className="pl-10 sm:pl-12 pr-12 sm:pr-16 py-2 sm:py-3 text-base sm:text-lg bg-white dark:bg-gray-800 border-2 focus:border-primary"
+              onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+              className="pl-10 sm:pl-12 pr-10 h-12 sm:h-14 text-base border-2 border-gray-200 dark:border-gray-700 focus:border-primary transition-colors"
+              autoFocus
             />
             {filters.query && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10"
-                onClick={() => setFilters(prev => ({ ...prev, query: "" }))}
+                size="sm"
+                onClick={handleClearSearch}
+                className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-1.5"
               >
-                <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                <X className="w-4 h-4" />
               </Button>
             )}
           </div>
@@ -528,185 +835,89 @@ export default function SearchPage() {
         </div>
 
         {/* Search Results */}
-        {filters.query ? (
+        {filters.query && (
           <>
+            {/* Loading State */}
+            {isLoading && <SearchResultsSkeleton />}
+
             {/* Results Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-2 sm:gap-4">
-                <h2 className="text-lg sm:text-xl font-semibold">
-                  {isLoading ? "Searching..." : `${searchResults.total} results for "${filters.query}"`}
-                </h2>
-              </div>
-              
-              <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0">
-                <FilterSheet />
+            {!isLoading && searchResults.total > 0 && (
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h2 className="text-lg sm:text-xl font-semibold">
+                    {searchResults.total} results for "{filters.query}"
+                  </h2>
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                    Page {searchResults.pagination.currentPage}
+                  </Badge>
+                </div>
                 
-                <Select value={filters.sortBy} onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value }))}>
-                  <SelectTrigger className="w-32 sm:w-40 text-xs sm:text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center border rounded-lg">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="icon"
-                    onClick={() => setViewMode("grid")}
-                    className="w-8 h-8 sm:w-10 sm:h-10"
-                  >
-                    <Grid className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="icon"
-                    onClick={() => setViewMode("list")}
-                    className="w-8 h-8 sm:w-10 sm:h-10"
-                  >
-                    <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <FilterSheet />
+                  
+                  <Select value={filters.sortBy} onValueChange={(value) => 
+                    setFilters(prev => ({ ...prev, sortBy: value, page: 1 }))
+                  }>
+                    <SelectTrigger className="w-full sm:w-48 text-xs sm:text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SORT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="flex border rounded-lg overflow-hidden">
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                      className="rounded-none px-2 sm:px-3"
+                    >
+                      <Grid className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className="rounded-none px-2 sm:px-3"
+                    >
+                      <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6 sm:mb-8 h-auto">
-                <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
-                  <Search className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">All</span>
-                  <span className="text-xs text-gray-500">({searchResults.total})</span>
-                </TabsTrigger>
-                <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
-                  <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Products</span>
-                  <span className="text-xs text-gray-500">({searchResults.products.length})</span>
-                </TabsTrigger>
-                <TabsTrigger value="blogs" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
-                  <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Blogs</span>
-                  <span className="text-xs text-gray-500">({searchResults.blogs.length})</span>
-                </TabsTrigger>
-                <TabsTrigger value="vendors" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3">
-                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Vendors</span>
-                  <span className="text-xs text-gray-500">({searchResults.vendors.length})</span>
-                </TabsTrigger>
-              </TabsList>
-
-              {/* All Results */}
-              <TabsContent value="all">
-                <div className="space-y-6 sm:space-y-8">
-                  {searchResults.products.length > 0 && (
-                    <section>
-                      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-                        Products ({searchResults.products.length})
-                      </h3>
-                      <div className={`grid gap-3 sm:gap-4 ${
-                        viewMode === "grid" 
-                          ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
-                          : "grid-cols-1"
-                      }`}>
-                        {searchResults.products.slice(0, 10).map((product, index) => (
-                          <ProductCard key={index} product={product} />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {searchResults.blogs.length > 0 && (
-                    <section>
-                      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-                        <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                        Blogs ({searchResults.blogs.length})
-                      </h3>
-                      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {searchResults.blogs.slice(0, 6).map((blog, index) => (
-                          <BlogCard key={index} blog={blog} />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {searchResults.vendors.length > 0 && (
-                    <section>
-                      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-                        <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                        Vendors ({searchResults.vendors.length})
-                      </h3>
-                      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                        {searchResults.vendors.slice(0, 6).map((vendor, index) => (
-                          <VendorCard key={index} vendor={vendor} />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Products Only */}
-              <TabsContent value="products">
-                <div className={`grid gap-3 sm:gap-4 ${
-                  viewMode === "grid" 
-                    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
-                    : "grid-cols-1"
-                }`}>
-                  {searchResults.products.map((product, index) => (
-                    <ProductCard key={index} product={product} />
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* Blogs Only */}
-              <TabsContent value="blogs">
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {searchResults.blogs.map((blog, index) => (
-                    <BlogCard key={index} blog={blog} />
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* Vendors Only */}
-              <TabsContent value="vendors">
-                <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                  {searchResults.vendors.map((vendor, index) => (
-                    <VendorCard key={index} vendor={vendor} />
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
+            {/* Results */}
+            {!isLoading && searchResults.total > 0 && (
+              <SearchResultsGrid 
+                results={searchResults} 
+                activeTab={activeTab}
+                viewMode={viewMode}
+              />
+            )}
 
             {/* No Results */}
             {!isLoading && searchResults.total === 0 && filters.query && (
-              <div className="text-center py-8 sm:py-12">
-                <Search className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                <h3 className="text-lg sm:text-xl font-semibold mb-2">No results found</h3>
-                <p className="text-gray-600 mb-4 text-sm sm:text-base px-4">
-                  Try adjusting your search terms or filters
-                </p>
-                <Button onClick={() => setFilters(prev => ({ ...prev, query: "" }))}>
-                  Clear Search
-                </Button>
-              </div>
+              <EmptyState />
             )}
+
+            <PaginationComponent />
           </>
-        ) : (
-          /* Welcome State - No Search Query */
+        )}
+
+        {/* Welcome State - No Search Query */}
+        {!filters.query && (
           <div className="text-center py-8 sm:py-12 lg:py-16">
             <Search className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-gray-300 mx-auto mb-4 sm:mb-6" />
             <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Start your search</h2>
             <p className="text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base px-4">
               Search for products, blogs, and vendors. Use the search bar above or try one of the trending categories.
             </p>
-            
-            
           </div>
         )}
       </div>

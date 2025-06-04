@@ -8,6 +8,27 @@ import SubCategory from "../models/subCategory.model";
 import User from "../models/user.model";
 import { redirect } from "next/navigation";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { CacheInvalidation } from "@/lib/cache/invalidation";
+
+// Helper function to invalidate product caches
+function invalidateProductCaches() {
+  try {
+    console.log('🗑️ Invalidating all product caches...');
+    
+    // Invalidate all product-related tags
+    revalidateTag('products');
+    revalidateTag('homepage');
+    revalidateTag('top-selling');
+    revalidateTag('new-arrivals');
+    revalidateTag('featured');
+    revalidateTag('categories');
+    revalidateTag('product');
+    
+    console.log('✅ Product caches invalidated successfully');
+  } catch (error) {
+    console.error('❌ Error invalidating product caches:', error);
+  }
+}
 
 // get all top selling products
 export const getTopSellingProducts = unstable_cache(
@@ -36,7 +57,8 @@ export const getTopSellingProducts = unstable_cache(
   },
   ["top_selling_products"],
   {
-    revalidate: 43200,
+    revalidate: 1800,
+    tags: ["products", "homepage", "top-selling"],
   }
 );
 
@@ -67,7 +89,8 @@ export const getNewArrivalProducts = unstable_cache(
   },
   ["new_arrival_products"],
   {
-    revalidate: 43200,
+    revalidate: 1800,
+    tags: ["products", "homepage", "new-arrivals"],
   }
 );
 // fetch products by query
@@ -197,7 +220,7 @@ export const getSingleProduct = unstable_cache(
   ["product"],
   {
     revalidate: 1800,
-    tags: ["product"],
+    tags: ["product", "products"],
   }
 );
 
@@ -241,7 +264,7 @@ export async function createProductReview(
           updatedProduct.reviews.length;
         await updatedProduct.save();
         await updatedProduct.populate("reviews.reviewBy");
-        revalidateTag("product");
+        invalidateProductCaches(); // Comprehensive cache invalidation
         return JSON.parse(
           JSON.stringify({ reviews: updatedProduct.reviews.reverse() })
         );
@@ -259,7 +282,7 @@ export async function createProductReview(
           product.reviews.length;
         await product.save();
         await product.populate("reviews.reviewBy");
-        revalidateTag("product");
+        invalidateProductCaches(); // Comprehensive cache invalidation
 
         return JSON.parse(
           JSON.stringify({ reviews: product.reviews.reverse() })
@@ -347,6 +370,7 @@ export const getRelatedProductsBySubCategoryIds = unstable_cache(
   ["subCatgeory_products"],
   {
     revalidate: 1800,
+    tags: ["products", "categories"],
   }
 );
 // get featured products
@@ -369,6 +393,7 @@ export const getAllFeaturedProducts = unstable_cache(
   },
   ["featured_products"],
   {
-    revalidate: 43200,
+    revalidate: 1800,
+    tags: ["products", "homepage", "featured"],
   }
 );

@@ -8,178 +8,127 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
     const category = searchParams.get("category") || "";
-    const minPrice = parseInt(searchParams.get("minPrice") || "0");
-    const maxPrice = parseInt(searchParams.get("maxPrice") || "1000");
+    const minPrice = parseFloat(searchParams.get("minPrice") || "0");
+    const maxPrice = parseFloat(searchParams.get("maxPrice") || "999999");
     const sortBy = searchParams.get("sortBy") || "relevance";
     const inStock = searchParams.get("inStock") === "true";
     const featured = searchParams.get("featured") === "true";
     const discount = searchParams.get("discount") === "true";
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
     await connectToDatabase();
 
-    // Build search query
-    let searchQuery: any = {};
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
 
-    // Text search across multiple fields
-    if (query.trim()) {
+    // Build the search query
+    const searchQuery: any = {};
+    
+    if (query) {
       searchQuery.$or = [
         { name: { $regex: query, $options: "i" } },
         { description: { $regex: query, $options: "i" } },
-        { longDescription: { $regex: query, $options: "i" } },
-        { brand: { $regex: query, $options: "i" } },
-        { "details.name": { $regex: query, $options: "i" } },
-        { "details.value": { $regex: query, $options: "i" } },
-        { "benefits.name": { $regex: query, $options: "i" } },
-        { "ingredients.name": { $regex: query, $options: "i" } }
+        { tags: { $in: [new RegExp(query, "i")] } }
       ];
     }
 
-    // Category filter
     if (category && category !== "All") {
-      // First, find the category by name
-      const categoryDoc = await Category.findOne({ 
-        name: { $regex: category, $options: "i" } 
-      });
-      if (categoryDoc) {
-        searchQuery.category = categoryDoc._id;
-      }
+      searchQuery.category = category;
     }
 
-    // Price filter
-    if (minPrice > 0 || maxPrice < 1000) {
-      searchQuery["subProducts.sizes.price"] = {
-        $gte: minPrice,
-        $lte: maxPrice
-      };
-    }
+    // Price filtering
+    searchQuery["subProducts.sizes.price"] = {
+      $gte: minPrice,
+      $lte: maxPrice === 999999 ? 1000 : maxPrice
+    };
 
-    // In stock filter
     if (inStock) {
       searchQuery["subProducts.sizes.qty"] = { $gt: 0 };
     }
 
-    // Featured filter
     if (featured) {
-      searchQuery.featured = true;
+      searchQuery.isFeatured = true;
     }
 
-    // Discount filter
     if (discount) {
       searchQuery["subProducts.discount"] = { $gt: 0 };
     }
 
-    // Build sort criteria
-    let sortCriteria: any = {};
+    // Build sort query
+    let sortQuery: any = {};
     switch (sortBy) {
       case "newest":
-        sortCriteria = { createdAt: -1 };
+        sortQuery = { createdAt: -1 };
         break;
       case "price-low":
-        sortCriteria = { "subProducts.sizes.price": 1 };
+        sortQuery = { "subProducts.sizes.price": 1 };
         break;
       case "price-high":
-        sortCriteria = { "subProducts.sizes.price": -1 };
+        sortQuery = { "subProducts.sizes.price": -1 };
         break;
       case "rating":
-        sortCriteria = { rating: -1, numReviews: -1 };
+        sortQuery = { averageRating: -1 };
         break;
-      case "popular":
-        sortCriteria = { "subProducts.sold": -1, numReviews: -1 };
+      case "popularity":
+        sortQuery = { views: -1 };
         break;
-      case "relevance":
       default:
-        // For text search, MongoDB will sort by relevance automatically
-        if (query.trim()) {
-          sortCriteria = { score: { $meta: "textScore" } };
-        } else {
-          sortCriteria = { featured: -1, rating: -1, createdAt: -1 };
-        }
-        break;
+        sortQuery = { createdAt: -1 };
     }
 
-    // Create text index for better search if query exists
-    if (query.trim()) {
-      // Add text score for relevance sorting
-      searchQuery.$text = { $search: query };
-    }
+    // Get total count for pagination
+    const totalProducts = await Product.countDocuments(searchQuery);
+    const totalPages = Math.ceil(totalProducts / limit);
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
-
-    // Execute search
-    let productsQuery = Product.find(searchQuery)
-      .populate('category', 'name')
+    // Execute search with pagination
+    const products = await Product.find(searchQuery)
+      .populate("category", "name")
+      .sort(sortQuery)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
-    // Add sorting
-    if (query.trim() && sortBy === "relevance") {
-      productsQuery = productsQuery.sort({ score: { $meta: "textScore" } });
-    } else {
-      productsQuery = productsQuery.sort(sortCriteria);
-    }
-
-    const [products, totalCount] = await Promise.all([
-      productsQuery.lean(),
-      Product.countDocuments(searchQuery)
-    ]);
-
-    // Calculate total pages
-    const totalPages = Math.ceil(totalCount / limit);
-
-    // Transform products for consistent API response
-    const transformedProducts = products.map(product => ({
+    // Transform products data
+    const transformedProducts = products.map((product: any) => ({
       ...product,
-      // Calculate minimum price
-      minPrice: product.subProducts?.reduce((min: number, subProduct: any) => {
-        const subProductMin = subProduct.sizes?.reduce((subMin: number, size: any) => {
-          const finalPrice = subProduct.discount > 0 
-            ? size.price * (1 - subProduct.discount / 100)
-            : size.price;
-          return Math.min(subMin, finalPrice);
-        }, Infinity) || Infinity;
-        return Math.min(min, subProductMin);
-      }, Infinity) || 0,
-      
-      // Check if in stock
-      inStock: product.subProducts?.some((subProduct: any) => 
-        subProduct.sizes?.some((size: any) => size.qty > 0)
-      ) || false
+      subProducts: product.subProducts?.map((sub: any) => ({
+        ...sub,
+        images: sub.images || [],
+        sizes: sub.sizes || [],
+        discount: sub.discount || 0
+      })) || []
     }));
 
     return NextResponse.json({
       success: true,
-      data: transformedProducts,
+      products: transformedProducts,
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults: totalCount,
+        totalResults: totalProducts,
         hasNext: page < totalPages,
         hasPrev: page > 1,
         limit
       },
-      searchInfo: {
-        query,
-        category,
-        priceRange: [minPrice, maxPrice],
-        sortBy,
-        filters: {
-          inStock,
-          featured,
-          discount
-        }
-      }
+      message: `Found ${totalProducts} products`
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Product search error:", error);
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to search products",
-        data: []
+        products: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalResults: 0,
+          hasNext: false,
+          hasPrev: false,
+          limit: 10
+        },
+        message: "Failed to search products"
       },
       { status: 500 }
     );
