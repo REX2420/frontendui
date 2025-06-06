@@ -23,29 +23,23 @@ function invalidateBlogCaches() {
   }
 }
 
-// Get published blogs with 30-minute cache for home page
+// Get published blogs with 30-minute cache
 export const getPublishedBlogsForHome = unstable_cache(
   async (limit: number = 6) => {
     try {
       await connectToDatabase();
       
-      const blogs = await Blog.find({ status: "published" })
+      const blogs = await Blog.find({ 
+        status: "published" 
+      })
         .sort({ publishedAt: -1 })
         .limit(limit)
         .lean();
 
-      if (!blogs || blogs.length === 0) {
-        return {
-          success: true,
-          blogs: [],
-          message: "No published blogs found",
-        };
-      }
-
       return {
         success: true,
         blogs: JSON.parse(JSON.stringify(blogs)),
-        message: "Successfully fetched published blogs for home page",
+        message: "Successfully fetched published blogs",
       };
     } catch (error) {
       handleError(error);
@@ -58,8 +52,8 @@ export const getPublishedBlogsForHome = unstable_cache(
   },
   ["published_blogs_home"],
   {
-    revalidate: 1800, // 30 minutes (consistent with products)
-    tags: ["blogs", "homepage", "published-blogs"],
+    revalidate: 1800, // 30 minutes
+    tags: ["published_blogs_home", "blogs", "homepage"],
   }
 );
 
@@ -94,7 +88,7 @@ export const getFeaturedBlogsForHome = unstable_cache(
   ["featured_blogs_home"],
   {
     revalidate: 1800, // 30 minutes
-    tags: ["blogs", "homepage", "featured-blogs"],
+    tags: ["featured_blogs_home", "blogs", "homepage"],
   }
 );
 

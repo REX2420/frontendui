@@ -45,7 +45,7 @@ const MobileCategoryMenu = ({ onClose }: MobileCategoryMenuProps) => {
               const subCatResponse = await getAllSubCategoriesByParentId(category._id);
               return {
                 categoryId: category._id,
-                subCategories: subCatResponse?.subCategories || []
+                subCategories: subCatResponse?.subcategories || []
               };
             } catch (error) {
               handleError(error);

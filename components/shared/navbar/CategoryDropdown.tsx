@@ -41,6 +41,7 @@ const CategoryDropdown = () => {
       try {
         setLoading(true);
         const response = await getAllCategories();
+        
         if (response?.success) {
           const categoriesData = response.categories || [];
           setCategories(categoriesData);
@@ -49,9 +50,10 @@ const CategoryDropdown = () => {
           const subCatPromises = categoriesData.map(async (category: Category) => {
             try {
               const subCatResponse = await getAllSubCategoriesByParentId(category._id);
+              
               return {
                 categoryId: category._id,
-                subCategories: subCatResponse?.subCategories || []
+                subCategories: subCatResponse?.subcategories || []
               };
             } catch (error) {
               handleError(error);

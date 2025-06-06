@@ -58,7 +58,7 @@ export const getTopSellingProducts = unstable_cache(
   ["top_selling_products"],
   {
     revalidate: 1800,
-    tags: ["products", "homepage", "top-selling"],
+    tags: ["top_selling_products", "products", "homepage"],
   }
 );
 
@@ -90,7 +90,7 @@ export const getNewArrivalProducts = unstable_cache(
   ["new_arrival_products"],
   {
     revalidate: 1800,
-    tags: ["products", "homepage", "new-arrivals"],
+    tags: ["new_arrival_products", "products", "homepage"],
   }
 );
 // fetch products by query
@@ -394,6 +394,6 @@ export const getAllFeaturedProducts = unstable_cache(
   ["featured_products"],
   {
     revalidate: 1800,
-    tags: ["products", "homepage", "featured"],
+    tags: ["featured_products", "products", "homepage"],
   }
 );

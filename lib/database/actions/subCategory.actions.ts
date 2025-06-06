@@ -12,23 +12,29 @@ export const getAllSubCategoriesByParentId = unstable_cache(
   async (parentId: string) => {
     try {
       await connectToDatabase();
-      const subCategoriesByParentId = await SubCategory.find({
-        parent: parentId,
-      }).lean();
+      const subcategories = await SubCategory.find({ parent: parentId })
+        .populate({ path: "parent", model: Category })
+        .sort({ updatedAt: -1 })
+        .lean();
+        
       return {
-        message:
-          "Successfully fetched all sub categories related to it's parent ID",
-        subCategories: JSON.parse(JSON.stringify(subCategoriesByParentId)),
+        message: "Successfully fetched subcategories",
+        subcategories: JSON.parse(JSON.stringify(subcategories)),
         success: true,
       };
     } catch (error) {
       handleError(error);
+      return {
+        message: "Failed to fetch subcategories",
+        subcategories: [],
+        success: false,
+      };
     }
   },
   ["parent_subCategories"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["subcategories"]
+    tags: ["parent_subCategories", "subcategories"]
   }
 );
 
@@ -73,7 +79,7 @@ export const getAllSubCategoriesByName = unstable_cache(
   ["subCategories"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["subcategories"]
+    tags: ["subcategories_all", "subcategories"]
   }
 );
 
@@ -127,7 +133,7 @@ export const getSubcategoriesWithProductCounts = unstable_cache(
   ["subcategories_with_counts"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["subcategories", "products"]
+    tags: ["subcategories_with_counts", "subcategories", "products"]
   }
 );
 
@@ -136,7 +142,6 @@ export const getAllSubcategoriesForNavigation = unstable_cache(
   async () => {
     try {
       await connectToDatabase();
-      
       const subcategories = await SubCategory.find()
         .populate({
           path: "parent",
@@ -145,9 +150,9 @@ export const getAllSubcategoriesForNavigation = unstable_cache(
         })
         .sort({ updatedAt: -1 })
         .lean();
-
+        
       return {
-        message: "Successfully fetched all subcategories for navigation",
+        message: "Successfully fetched subcategories for navigation",
         subcategories: JSON.parse(JSON.stringify(subcategories)),
         success: true,
       };
@@ -163,7 +168,7 @@ export const getAllSubcategoriesForNavigation = unstable_cache(
   ["subcategories_navigation"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["subcategories"]
+    tags: ["subcategories_navigation", "subcategories"]
   }
 );
 
@@ -218,7 +223,7 @@ export const getPopularSubcategories = unstable_cache(
   ["popular_subcategories"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["subcategories", "products"]
+    tags: ["popular_subcategories", "subcategories", "products"]
   }
 );
 

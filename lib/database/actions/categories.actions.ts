@@ -5,13 +5,17 @@ import { connectToDatabase } from "../connect";
 import Category from "../models/category.model";
 import SubCategory from "../models/subCategory.model";
 import { unstable_cache, revalidateTag } from "next/cache";
+import Product from "../models/product.model";
 
 // Get all categories with weekly cache
 export const getAllCategories = unstable_cache(
   async () => {
     try {
       await connectToDatabase();
-      const categories = await Category.find().sort({ updatedAt: -1 }).lean();
+      const categories = await Category.find()
+        .sort({ updatedAt: -1 })
+        .lean();
+        
       return {
         message: "Successfully fetched all categories",
         categories: JSON.parse(JSON.stringify(categories)),
@@ -29,7 +33,7 @@ export const getAllCategories = unstable_cache(
   ["all_categories"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["categories"]
+    tags: ["all_categories", "categories"]
   }
 );
 
@@ -104,7 +108,7 @@ export const getFeaturedCategories = unstable_cache(
   ["featured_categories"],
   {
     revalidate: 604800, // 7 days (weekly)
-    tags: ["categories"]
+    tags: ["featured_categories", "categories"]
   }
 );
 
@@ -148,6 +152,52 @@ export const getCategoryWithSubcategories = unstable_cache(
   {
     revalidate: 604800, // 7 days (weekly)
     tags: ["categories", "subcategories"]
+  }
+);
+
+// Get categories with their product counts for category screens with weekly cache
+export const getCategoriesWithProductCounts = unstable_cache(
+  async () => {
+    try {
+      await connectToDatabase();
+      
+      // Get all categories
+      const categories = await Category.find()
+        .sort({ updatedAt: -1 })
+        .lean();
+      
+      // Get product counts for each category
+      const categoriesWithCounts = await Promise.all(
+        categories.map(async (category: any) => {
+          const productCount = await Product.countDocuments({
+            category: category._id,
+          });
+          
+          return {
+            ...category,
+            productCount,
+          };
+        })
+      );
+
+      return {
+        message: "Successfully fetched categories with product counts",
+        categories: JSON.parse(JSON.stringify(categoriesWithCounts)),
+        success: true,
+      };
+    } catch (error) {
+      handleError(error);
+      return {
+        message: "Failed to fetch categories with counts",
+        categories: [],
+        success: false,
+      };
+    }
+  },
+  ["categories_with_counts"],
+  {
+    revalidate: 604800, // 7 days (weekly)
+    tags: ["categories_with_counts", "categories", "products"]
   }
 );
 

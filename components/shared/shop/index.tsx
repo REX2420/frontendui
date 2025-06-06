@@ -54,7 +54,7 @@ const ShopPageComponent = () => {
         setSubCategoriesLoading(true);
         await getAllSubCategoriesByParentId(selectedCategoryId)
           .then((res) => {
-            setSubCategories(res?.subCategories || []);
+            setSubCategories(res?.subcategories || []);
           })
           .catch((err) => {
             toast.error(err);
@@ -74,6 +74,10 @@ const ShopPageComponent = () => {
       </div>
     );
   }
+
+  // Get the selected category name for display
+  const selectedCategory = allCategories.find((cat: any) => cat._id === selectedCategoryId);
+  const categoryName = selectedCategory ? (selectedCategory as any).name : "Products";
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-7xl">
@@ -127,15 +131,9 @@ const ShopPageComponent = () => {
             </div>
           ) : subCategories.length > 0 ? (
             <>
-              {(() => {
-                const selectedCategory = allCategories.find((cat: any) => cat._id === selectedCategoryId);
-                const categoryName = selectedCategory ? selectedCategory.name : "Products";
-                return (
-                  <h2 className="text-2xl font-semibold mb-8 text-center">
-                    {categoryName} Subcategories
-                  </h2>
-                );
-              })()}
+              <h2 className="text-2xl font-semibold mb-8 text-center">
+                {categoryName} Subcategories
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {subCategories.map((item: any, index: number) => (
                   <div 

@@ -25,6 +25,7 @@ export const fetchAllWebsiteBanners = unstable_cache(
   ["website_banners"],
   {
     revalidate: 43200, // 12 hours
+    tags: ["website_banners", "banners", "homepage"],
   }
 );
 // fetch all app banners
@@ -43,5 +44,6 @@ export const fetchAllAppBanners = unstable_cache(
   ["app_banners"],
   {
     revalidate: 43200, // 12 hours
+    tags: ["app_banners", "banners", "homepage"],
   }
 );
