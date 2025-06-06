@@ -124,7 +124,7 @@ const MobileHamBurgerMenu = ({
                   .map((item) => (
                     <Link 
                       key={item.name}
-                      href="#"
+                      href={item.name === "BLOGS" ? "/blog" : "#"}
                       onClick={() => setHamMenuOpen(false)}
                     >
                       <div className="flex items-center justify-between p-4 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all duration-200 cursor-pointer group border border-transparent hover:border-orange-200 dark:hover:border-orange-800">

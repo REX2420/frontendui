@@ -5,22 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Loader, X } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import {
+  getNewArrivalProducts,
   getProductsByQuery,
-  getTopSellingProducts,
 } from "@/lib/database/actions/product.actions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { handleError } from "@/lib/utils";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 const SearchModal = ({ setOpen }: { setOpen: any }) => {
   const [query, setQuery] = useState<string>("");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState<boolean>(false);
   useEffect(() => {
-    async function fetchBestSellerProducts() {
+    async function fetchNewArrivalProducts() {
       try {
-        await getTopSellingProducts().then((res) => {
+        await getNewArrivalProducts().then((res) => {
           if (res?.success) {
             setProducts(res?.products);
             console.log(res?.products);
@@ -33,7 +33,7 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
         handleError(error);
       }
     }
-    fetchBestSellerProducts();
+    fetchNewArrivalProducts();
   }, []);
   useEffect(() => {
     async function fetchDataByQuery() {

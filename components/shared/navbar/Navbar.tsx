@@ -12,7 +12,7 @@ import CategoryDropdown from "./CategoryDropdown";
 const Navbar = () => {
   const navItems = [
     { name: "CATEGORY", icon: <LuStore size={24} /> },
-    { name: "BESTSELLERS", icon: <GrLike size={24} /> },
+    { name: "BLOGS", icon: <GrLike size={24} /> },
   ];
 
   return (
@@ -50,10 +50,10 @@ const Navbar = () => {
           <div className="flex justify-evenly py-3">
             <CategoryDropdown />
             <Link
-              href="#"
+              href="/blog"
               className="text-sm font-medium text-foreground hover:text-primary group transition duration-300"
             >
-              BESTSELLERS
+              BLOGS
               <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-foreground"></span>
             </Link>
           </div>
