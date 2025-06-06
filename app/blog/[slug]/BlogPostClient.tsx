@@ -133,15 +133,27 @@ const BlogPostClient = ({ slug }: BlogPostClientProps) => {
   };
 
   const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      "Fragrance Tips": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-      "Product Reviews": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-      "Lifestyle": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-      "Beauty": "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
-      "Fashion": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      "Health & Wellness": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
-    };
-    return colors[category] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+    // Generate color based on category name hash for consistency
+    const colors = [
+      "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg",
+      "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg", 
+      "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg",
+      "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg",
+      "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg",
+      "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg",
+      "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg",
+      "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg",
+      "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg",
+      "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg",
+    ];
+    
+    // Simple hash function for consistent color assignment
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+      hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
   };
 
   if (loading) {

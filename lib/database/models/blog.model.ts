@@ -44,7 +44,6 @@ const blogSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: ["Fragrance Tips", "Product Reviews", "Lifestyle", "Beauty", "Fashion", "Health & Wellness"],
     },
     tags: [{
       type: String,

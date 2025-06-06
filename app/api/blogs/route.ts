@@ -10,10 +10,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "6");
     const category = searchParams.get("category");
     const search = searchParams.get("search");
+    const featured = searchParams.get("featured");
+    const sort = searchParams.get("sort") || "publishedAt";
     
-    // Use cached functions for simple cases without search
-    if (!search && page === 1) {
-      if (category && category !== "All") {
+    // Use cached functions only for simple cases without advanced filters
+    const hasAdvancedFilters = featured || (sort !== "publishedAt");
+    
+    if (!search && page === 1 && !hasAdvancedFilters) {
+      if (category && category !== "All" && category !== "") {
         // Use cached category-specific blog fetching
         const result = await getBlogsByCategory(category, limit);
         if (result.success) {
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
             },
           });
         }
-      } else if (!category || category === "All") {
+      } else if (!category || category === "All" || category === "") {
         // Use cached home page blog fetching
         const result = await getPublishedBlogsForHome(limit);
         if (result.success) {
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback to dynamic querying for complex cases (search, pagination)
+    // Dynamic querying for search and advanced filtering
     await connectToDatabase();
     
     const skip = (page - 1) * limit;
@@ -56,26 +60,57 @@ export async function GET(request: NextRequest) {
     // Build query
     let query: any = { status: "published" };
     
-    if (category && category !== "All") {
-      query.category = category;
+    // Category filter - use categoryName field
+    if (category && category !== "All" && category !== "") {
+      query.categoryName = category;
     }
     
+    // Featured filter
+    if (featured === "true") {
+      query.featured = true;
+    }
+    
+    // Search filter
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
         { excerpt: { $regex: search, $options: "i" } },
-        { content: { $regex: search, $options: "i" } }
+        { content: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } }
       ];
     }
     
+    // Build sort options
+    let sortOptions: any = {};
+    switch (sort) {
+      case "views":
+        sortOptions = { views: -1, publishedAt: -1 };
+        break;
+      case "likes":
+        sortOptions = { likes: -1, publishedAt: -1 };
+        break;
+      case "title":
+        sortOptions = { title: 1 };
+        break;
+      case "publishedAt":
+      default:
+        sortOptions = { publishedAt: -1 };
+        break;
+    }
+    
+    console.log("Blog query:", JSON.stringify(query, null, 2));
+    console.log("Sort options:", sortOptions);
+    
     const blogs = await Blog.find(query)
-      .sort({ publishedAt: -1 })
+      .sort(sortOptions)
       .skip(skip)
       .limit(limit)
       .lean();
 
     const totalBlogs = await Blog.countDocuments(query);
     const totalPages = Math.ceil(totalBlogs / limit);
+
+    console.log(`Found ${blogs.length} blogs, total: ${totalBlogs}`);
 
     return NextResponse.json({
       success: true,

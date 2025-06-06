@@ -32,13 +32,29 @@ export const getPublishedBlogsForHome = unstable_cache(
       const blogs = await Blog.find({ 
         status: "published" 
       })
+        .populate('category', 'name') // Populate category if it's an ObjectId reference
         .sort({ publishedAt: -1 })
         .limit(limit)
         .lean();
 
+      // Transform the blogs to ensure category is a string
+      const transformedBlogs = blogs.map(blog => {
+        let categoryName = blog.category;
+        
+        // If category is populated (ObjectId reference), get the name
+        if (typeof blog.category === 'object' && blog.category?.name) {
+          categoryName = blog.category.name;
+        }
+        
+        return {
+          ...blog,
+          category: categoryName || 'Uncategorized'
+        };
+      });
+
       return {
         success: true,
-        blogs: JSON.parse(JSON.stringify(blogs)),
+        blogs: JSON.parse(JSON.stringify(transformedBlogs)),
         message: "Successfully fetched published blogs",
       };
     } catch (error) {
@@ -67,13 +83,29 @@ export const getFeaturedBlogsForHome = unstable_cache(
         status: "published",
         featured: true 
       })
+        .populate('category', 'name') // Populate category if it's an ObjectId reference
         .sort({ publishedAt: -1 })
         .limit(limit)
         .lean();
 
+      // Transform the blogs to ensure category is a string
+      const transformedBlogs = blogs.map(blog => {
+        let categoryName = blog.category;
+        
+        // If category is populated (ObjectId reference), get the name
+        if (typeof blog.category === 'object' && blog.category?.name) {
+          categoryName = blog.category.name;
+        }
+        
+        return {
+          ...blog,
+          category: categoryName || 'Uncategorized'
+        };
+      });
+
       return {
         success: true,
-        blogs: JSON.parse(JSON.stringify(blogs)),
+        blogs: JSON.parse(JSON.stringify(transformedBlogs)),
         message: "Successfully fetched featured blogs",
       };
     } catch (error) {
@@ -102,13 +134,29 @@ export const getBlogsByCategory = unstable_cache(
         status: "published",
         category: category
       })
+        .populate('category', 'name') // Populate category if it's an ObjectId reference
         .sort({ publishedAt: -1 })
         .limit(limit)
         .lean();
 
+      // Transform the blogs to ensure category is a string
+      const transformedBlogs = blogs.map(blog => {
+        let categoryName = blog.category;
+        
+        // If category is populated (ObjectId reference), get the name
+        if (typeof blog.category === 'object' && blog.category?.name) {
+          categoryName = blog.category.name;
+        }
+        
+        return {
+          ...blog,
+          category: categoryName || 'Uncategorized'
+        };
+      });
+
       return {
         success: true,
-        blogs: JSON.parse(JSON.stringify(blogs)),
+        blogs: JSON.parse(JSON.stringify(transformedBlogs)),
         message: `Successfully fetched blogs for category: ${category}`,
       };
     } catch (error) {

@@ -126,15 +126,27 @@ const BlogSection = () => {
   };
 
   const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      "Fragrance Tips": "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg",
-      "Product Reviews": "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg",
-      "Lifestyle": "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg",
-      "Beauty": "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg",
-      "Fashion": "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg",
-      "Health & Wellness": "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg",
-    };
-    return colors[category] || "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg";
+    // Generate color based on category name hash for consistency
+    const colors = [
+      "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg",
+      "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg", 
+      "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg",
+      "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg",
+      "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg",
+      "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg",
+      "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg",
+      "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg",
+      "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg",
+      "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg",
+    ];
+    
+    // Simple hash function for consistent color assignment
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+      hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
   };
 
   if (loading) {

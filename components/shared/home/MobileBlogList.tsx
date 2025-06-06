@@ -38,15 +38,25 @@ const MobileBlogList = ({
   className = "" 
 }: MobileBlogListProps) => {
   const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      "Fragrance Tips": "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg",
-      "Product Reviews": "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg",
-      "Lifestyle": "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg",
-      "Beauty": "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg",
-      "Fashion": "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg",
-      "Health & Wellness": "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg",
-    };
-    return colors[category] || "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg";
+    const colors = [
+      "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg",
+      "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg", 
+      "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg",
+      "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg",
+      "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg",
+      "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg",
+      "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg",
+      "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg",
+      "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg",
+      "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg",
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+      hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
   };
 
   return (
@@ -63,11 +73,6 @@ const MobileBlogList = ({
                 alt={blog.title}
                 className="w-full h-full object-cover object-center rounded-full"
               />
-              {showCategory && (
-                <Badge className={`absolute -top-1 -right-1 ${getCategoryColor(blog.category)} text-xs px-1.5 py-0.5 border-0 rounded-full`}>
-                  {blog.category.charAt(0)}
-                </Badge>
-              )}
             </div>
             
             <div className="flex-1 min-w-0">
@@ -78,6 +83,14 @@ const MobileBlogList = ({
               <p className="text-muted-foreground text-xs mb-2 line-clamp-2 leading-relaxed">
                 {blog.excerpt}
               </p>
+
+              {showCategory && (
+                <div className="mb-2">
+                  <Badge className={`${getCategoryColor(blog.category)} text-xs px-2 py-0.5`}>
+                    {blog.category}
+                  </Badge>
+                </div>
+              )}
               
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
