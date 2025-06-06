@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SearchServiceFactory } from "@/lib/search/SearchServiceFactory";
-import { 
-  getCachedData, 
-  setCachedData, 
-  generateProductCacheKey 
-} from "@/utils/searchCache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,23 +18,11 @@ export async function GET(request: NextRequest) {
       limit: parseInt(searchParams.get("limit") || "20")
     };
 
-    // Generate cache key (same as before)
-    const cacheKey = generateProductCacheKey(filters);
-
-    // Try cache first
-    const cachedResult = await getCachedData(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json({ ...cachedResult, cached: true });
-    }
-
     // Get search service (Elasticsearch or MongoDB)
     const searchService = await SearchServiceFactory.create();
     
     // Execute search
     const result = await searchService.searchProducts(filters);
-
-    // Cache result (5 minutes)
-    await setCachedData(cacheKey, result, 300);
 
     return NextResponse.json(result);
 

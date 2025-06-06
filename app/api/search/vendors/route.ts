@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/database/mongodb";
 import Vendor from "@/lib/database/models/vendor.model";
 import { buildOptimizedVendorPipeline, buildCountPipeline } from "@/utils/searchPipeline";
-import { 
-  getCachedData, 
-  setCachedData, 
-  generateVendorCacheKey 
-} from "@/utils/searchCache";
 import { withPerformanceMonitoring } from "@/utils/queryAnalyzer";
 
 export async function GET(request: NextRequest) {
@@ -18,22 +13,6 @@ export async function GET(request: NextRequest) {
     const location = searchParams.get("location") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-
-    // Generate cache key
-    const cacheKey = generateVendorCacheKey({
-      query,
-      verified: verified === "true" ? true : verified === "false" ? false : undefined,
-      location,
-      sortBy,
-      page,
-      limit
-    });
-
-    // Try to get from cache first
-    const cachedResult = await getCachedData(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json(cachedResult);
-    }
 
     // Connect to database with optimized connection
     await dbConnect();
@@ -66,22 +45,9 @@ export async function GET(request: NextRequest) {
     const totalVendors = totalCountResult[0]?.total || 0;
     const totalPages = Math.ceil(totalVendors / limit);
 
-    // Transform vendors data for consistent response
-    const transformedVendors = vendors.map((vendor: any) => ({
-      ...vendor,
-      joinedDate: new Date(vendor.createdAt).toLocaleDateString(),
-      isVerified: vendor.verified,
-      contactNumber: vendor.phoneNumber ? `+960 ${vendor.phoneNumber}` : null,
-      // Mask sensitive information
-      email: maskEmail(vendor.email),
-      address: vendor.address,
-      description: vendor.description || `Professional vendor offering quality products and services.`
-    }));
-
     const result = {
       success: true,
-      data: transformedVendors,
-      vendors: transformedVendors, // For compatibility with existing frontend
+      vendors,
       pagination: {
         currentPage: page,
         totalPages,
@@ -92,16 +58,14 @@ export async function GET(request: NextRequest) {
       },
       searchInfo: {
         query,
+        verified: verified === "true" ? true : verified === "false" ? false : undefined,
         location,
-        sortBy,
-        verified: verified === "true" ? true : verified === "false" ? false : null
+        sortBy
       },
       message: `Found ${totalVendors} vendors`,
-      cached: false
+      cached: false,
+      engine: 'mongodb'
     };
-
-    // Cache the result (TTL: 5 minutes for search results)
-    await setCachedData(cacheKey, { ...result, cached: true }, 300);
 
     return NextResponse.json(result);
 
@@ -110,7 +74,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        data: [],
         vendors: [],
         pagination: {
           currentPage: 1,
@@ -120,8 +83,9 @@ export async function GET(request: NextRequest) {
           hasPrev: false,
           limit: 20
         },
-        message: error.message || "Failed to search vendors",
-        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: error.message || "Vendor search failed",
+        cached: false,
+        engine: 'error'
       },
       { status: 500 }
     );

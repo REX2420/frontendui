@@ -4,13 +4,15 @@ import Blog from "../../../../lib/database/models/blog.model";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     await connectToDatabase();
     
+    const { slug } = await params;
+    
     const blog = await Blog.findOne({ 
-      slug: params.slug, 
+      slug: slug, 
       status: "published" 
     })
     .lean();
@@ -46,16 +48,17 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     await connectToDatabase();
     
     const { action } = await request.json();
+    const { slug } = await params;
     
     if (action === "like") {
       const blog = await Blog.findOneAndUpdate(
-        { slug: params.slug, status: "published" },
+        { slug: slug, status: "published" },
         { $inc: { likes: 1 } },
         { new: true }
       );

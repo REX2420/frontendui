@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/database/mongodb";
 import Blog from "@/lib/database/models/blog.model";
 import { buildOptimizedBlogPipeline, buildCountPipeline } from "@/utils/searchPipeline";
-import { 
-  getCachedData, 
-  setCachedData, 
-  generateBlogCacheKey 
-} from "@/utils/searchCache";
 import { withPerformanceMonitoring } from "@/utils/queryAnalyzer";
 
 export async function GET(request: NextRequest) {
@@ -19,23 +14,6 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get("featured") === "true";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-
-    // Generate cache key
-    const cacheKey = generateBlogCacheKey({
-      query,
-      category,
-      sortBy,
-      status,
-      featured,
-      page,
-      limit
-    });
-
-    // Try to get from cache first
-    const cachedResult = await getCachedData(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json(cachedResult);
-    }
 
     // Connect to database with optimized connection
     await dbConnect();
@@ -69,20 +47,9 @@ export async function GET(request: NextRequest) {
     const totalBlogs = totalCountResult[0]?.total || 0;
     const totalPages = Math.ceil(totalBlogs / limit);
 
-    // Transform blogs data for consistent response
-    const transformedBlogs = blogs.map((blog: any) => ({
-      ...blog,
-      readingTime: calculateReadingTime(blog.content || ""),
-      publishedDate: blog.publishedAt 
-        ? new Date(blog.publishedAt).toLocaleDateString()
-        : new Date(blog.createdAt).toLocaleDateString(),
-      excerpt: blog.excerpt || generateExcerpt(blog.content || "")
-    }));
-
     const result = {
       success: true,
-      data: transformedBlogs,
-      blogs: transformedBlogs, // For compatibility with existing frontend
+      blogs,
       pagination: {
         currentPage: page,
         totalPages,
@@ -99,11 +66,9 @@ export async function GET(request: NextRequest) {
         featured
       },
       message: `Found ${totalBlogs} blogs`,
-      cached: false
+      cached: false,
+      engine: 'mongodb'
     };
-
-    // Cache the result (TTL: 5 minutes for search results)
-    await setCachedData(cacheKey, { ...result, cached: true }, 300);
 
     return NextResponse.json(result);
 
@@ -112,7 +77,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        data: [],
         blogs: [],
         pagination: {
           currentPage: 1,
@@ -122,8 +86,9 @@ export async function GET(request: NextRequest) {
           hasPrev: false,
           limit: 20
         },
-        message: error.message || "Failed to search blogs",
-        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: error.message || "Blog search failed",
+        cached: false,
+        engine: 'error'
       },
       { status: 500 }
     );

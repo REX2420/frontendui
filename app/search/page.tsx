@@ -75,6 +75,7 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [trendingSubcategories, setTrendingSubcategories] = useState<TrendingSubcategory[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [currentSearchInput, setCurrentSearchInput] = useState(""); // Track current input for visual feedback
   const [searchResults, setSearchResults] = useState<SearchResults>({
     products: [],
     blogs: [],
@@ -144,13 +145,27 @@ export default function SearchPage() {
         if (productResponse.ok) {
           const productData = await productResponse.json();
           console.log('✅ Product API Response:', productData);
+          console.log('✅ Product API Response Keys:', Object.keys(productData));
+          console.log('✅ productData.success:', productData.success);
+          console.log('✅ productData.products:', productData.products);
+          console.log('✅ productData.products type:', typeof productData.products);
+          console.log('✅ productData.products length:', productData.products?.length);
           
-          products = productData.success ? productData.products : [];
+          // More robust extraction - handle multiple possible response structures
+          if (productData.success) {
+            // Try different possible keys where products might be stored
+            products = productData.products || productData.data || productData.results || [];
+          } else {
+            console.warn('❌ Product API returned unsuccessful response:', productData.message);
+            products = [];
+          }
+          
+          console.log('✅ Final products variable:', products);
+          console.log('✅ Final products length:', products?.length);
+          console.log('✅ Final products Array.isArray:', Array.isArray(products));
           
           if (productData.success) {
             console.log(`🎯 Found ${products.length} products`);
-          } else {
-            console.warn('❌ Product API returned unsuccessful response:', productData.message);
           }
         } else {
           console.error('❌ Product API HTTP Error:', productResponse.status, productResponse.statusText);
@@ -254,6 +269,12 @@ export default function SearchPage() {
         }
       });
 
+      console.log('🔧 Final searchResults state will be:', {
+        products: Array.isArray(products) ? products : [],
+        total: totalResults,
+        productCount: Array.isArray(products) ? products.length : 0
+      });
+
       // Save search term to history after successful search
       if (filters.query.trim() && filters.query.length >= 2) {
         const searchTerm = filters.query.trim();
@@ -295,6 +316,27 @@ export default function SearchPage() {
       setIsLoading(false);
     }
   }, [filters]);
+
+  // Instant search function for immediate search triggers
+  const triggerInstantSearch = useCallback(() => {
+    performSearch();
+  }, [performSearch]);
+
+  // Handle Enter key press
+  const handleSearchSubmit = useCallback((e?: React.KeyboardEvent) => {
+    if (e && e.key !== 'Enter') return;
+    
+    console.log('🔍 Manual search triggered via Enter/Button');
+    triggerInstantSearch();
+  }, [triggerInstantSearch]);
+
+  // Handle input change with immediate response
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+    console.log('📝 Search input changed to:', newQuery);
+    setCurrentSearchInput(newQuery); // Track current input
+    setFilters(prev => ({ ...prev, query: newQuery, page: 1 }));
+  }, []);
 
   // Fetch trending subcategories
   const fetchTrendingSubcategories = useCallback(async () => {
@@ -388,9 +430,10 @@ export default function SearchPage() {
 
   // Perform search when filters change
   useEffect(() => {
+    // Use shorter delay for better responsiveness, but only for text input changes
     const delayedSearch = setTimeout(() => {
       performSearch();
-    }, 300);
+    }, 150); // Reduced from 300ms to 150ms for better UX
 
     return () => clearTimeout(delayedSearch);
   }, [performSearch]); // Fixed: depend on performSearch instead of filters
@@ -422,6 +465,28 @@ export default function SearchPage() {
       }, 100);
     }
   }, []);
+
+  // Enhanced search input focus handling
+  useEffect(() => {
+    const handleFocusSearchOnSlash = (e: KeyboardEvent) => {
+      // Focus search input when "/" is pressed (like GitHub/many other sites)
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleFocusSearchOnSlash);
+    return () => document.removeEventListener('keydown', handleFocusSearchOnSlash);
+  }, []);
+
+  // Sync current search input with filters query
+  useEffect(() => {
+    setCurrentSearchInput(filters.query);
+  }, [filters.query]);
 
   // Load search history from localStorage
   useEffect(() => {
@@ -822,26 +887,26 @@ export default function SearchPage() {
   const FilterSheet = () => (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:from-blue-50 hover:to-purple-50 dark:hover:from-slate-700 dark:hover:to-slate-600 hover:border-blue-300 dark:hover:border-purple-500 hover:shadow-lg transition-all duration-300">
+        <Button variant="outline" size="sm" className="text-xs sm:text-sm px-3 sm:px-4 py-2 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:from-blue-50 hover:to-purple-50 dark:hover:from-slate-700 dark:hover:to-slate-600 hover:border-blue-300 dark:hover:border-purple-500 hover:shadow-lg transition-all duration-300">
           <SlidersHorizontal className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
           Filters
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
-        <SheetHeader>
-          <SheetTitle className="text-base sm:text-lg bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Search Filters</SheetTitle>
+      <SheetContent className="w-full sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700 overflow-y-auto">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="text-lg bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Search Filters</SheetTitle>
         </SheetHeader>
-        <div className="py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="space-y-6">
           {/* Category Filter */}
           <div className="p-4 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-blue-100 dark:border-slate-600">
-            <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Category</label>
+            <label className="text-sm font-medium mb-3 block text-slate-700 dark:text-slate-300">Category</label>
             <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
-              <SelectTrigger className="h-10 sm:h-11 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 rounded-xl">
+              <SelectTrigger className="h-11 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
                 {PRODUCT_CATEGORIES.map(category => (
-                  <SelectItem key={category} value={category} className="text-sm focus:bg-gradient-to-r focus:from-blue-50 focus:to-purple-50 dark:focus:from-slate-700 dark:focus:to-slate-600 rounded-lg">{category}</SelectItem>
+                  <SelectItem key={category} value={category} className="text-sm focus:bg-gradient-to-r focus:from-blue-50 focus:to-purple-50 dark:focus:from-slate-700 dark:focus:to-slate-600 rounded-lg py-3">{category}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -849,7 +914,7 @@ export default function SearchPage() {
 
           {/* Price Range */}
           <div className="p-4 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-purple-100 dark:border-slate-600">
-            <label className="text-sm font-medium mb-3 block text-slate-700 dark:text-slate-300">
+            <label className="text-sm font-medium mb-4 block text-slate-700 dark:text-slate-300">
               Price Range: MVR {filters.priceRange[0]} - MVR {filters.priceRange[1]}
             </label>
             <div className="px-2">
@@ -859,10 +924,10 @@ export default function SearchPage() {
                 max={1000}
                 min={0}
                 step={10}
-                className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-blue-500 [&_[role=slider]]:to-purple-600 [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg"
+                className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-blue-500 [&_[role=slider]]:to-purple-600 [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg [&_[role=slider]]:w-5 [&_[role=slider]]:h-5"
               />
             </div>
-            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-3">
               <span>MVR 0</span>
               <span>MVR 1000</span>
             </div>
@@ -871,13 +936,13 @@ export default function SearchPage() {
           {/* Quick Filters */}
           <div className="space-y-4 p-4 bg-gradient-to-br from-green-50/50 to-blue-50/50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-xl border border-green-100 dark:border-slate-600">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Quick Filters</label>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 backdrop-blur-sm transition-all duration-200 group">
                 <input
                   type="checkbox"
                   checked={filters.inStock}
                   onChange={(e) => setFilters(prev => ({ ...prev, inStock: e.target.checked }))}
-                  className="rounded w-4 h-4 text-blue-600 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
+                  className="rounded w-5 h-5 text-blue-600 focus:ring-blue-500/30 dark:focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
                 />
                 <span className="text-sm flex-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">In Stock Only</span>
               </label>
@@ -886,7 +951,7 @@ export default function SearchPage() {
                   type="checkbox"
                   checked={filters.featured}
                   onChange={(e) => setFilters(prev => ({ ...prev, featured: e.target.checked }))}
-                  className="rounded w-4 h-4 text-purple-600 focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
+                  className="rounded w-5 h-5 text-purple-600 focus:ring-purple-500/30 border-slate-300 dark:border-slate-600"
                 />
                 <span className="text-sm flex-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">Featured Products</span>
               </label>
@@ -895,7 +960,7 @@ export default function SearchPage() {
                   type="checkbox"
                   checked={filters.discount}
                   onChange={(e) => setFilters(prev => ({ ...prev, discount: e.target.checked }))}
-                  className="rounded w-4 h-4 text-pink-600 focus:ring-pink-500/30 border-slate-300 dark:border-slate-600"
+                  className="rounded w-5 h-5 text-pink-600 focus:ring-pink-500/30 border-slate-300 dark:border-slate-600"
                 />
                 <span className="text-sm flex-1 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors duration-200">On Sale</span>
               </label>
@@ -906,7 +971,7 @@ export default function SearchPage() {
           <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
             <Button 
               variant="outline" 
-              className="w-full bg-gradient-to-r from-red-50 to-orange-50 dark:from-slate-800 dark:to-slate-700 border-red-200 dark:border-slate-600 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/20 dark:hover:to-orange-900/20 hover:border-red-300 dark:hover:border-red-500 text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-all duration-300"
+              className="w-full py-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-slate-800 dark:to-slate-700 border-red-200 dark:border-slate-600 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/20 dark:hover:to-orange-900/20 hover:border-red-300 dark:hover:border-red-500 text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-all duration-300"
               onClick={() => setFilters(prev => ({ 
                 ...prev, 
                 category: "All", 
@@ -1292,20 +1357,39 @@ export default function SearchPage() {
           </div>
 
           {/* Search Bar */}
-          <div className="relative max-w-full sm:max-w-2xl mb-4 sm:mb-6">
+          <div className="relative max-w-full sm:max-w-2xl mb-8 sm:mb-8">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl"></div>
             <div className="relative bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-cyan-500/5">
               <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <Input
                 type="text"
-                placeholder="Search products, blogs, vendors..."
+                placeholder="Search products, blogs, vendors... (Press Enter to search)"
                 value={filters.query}
-                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value, page: 1 }))}
+                onChange={handleSearchInputChange}
+                onKeyDown={handleSearchSubmit}
                 onFocus={() => setShowSearchHistory(true)}
                 onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
-                className="pl-10 sm:pl-12 pr-10 h-12 sm:h-14 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-cyan-400/50 transition-all duration-300 rounded-2xl placeholder:text-slate-400 dark:placeholder:text-gray-400 text-slate-900 dark:text-white"
+                className="pl-10 sm:pl-12 pr-24 sm:pr-28 h-12 sm:h-14 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-cyan-400/50 transition-all duration-300 rounded-2xl placeholder:text-slate-400 dark:placeholder:text-gray-400 text-slate-900 dark:text-white"
                 autoFocus
               />
+              
+              {/* Search Button */}
+              <Button
+                onClick={() => handleSearchSubmit()}
+                disabled={isLoading}
+                className="absolute right-12 sm:right-14 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 rounded-xl px-3 py-1.5 text-sm font-medium transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Search className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    <span className="hidden sm:inline">Search</span>
+                  </>
+                )}
+              </Button>
+
+              {/* Clear Button */}
               {filters.query && (
                 <Button
                   variant="ghost"
@@ -1316,11 +1400,18 @@ export default function SearchPage() {
                   <X className="w-4 h-4 text-slate-400 dark:text-gray-400" />
                 </Button>
               )}
+
+              {/* Loading indicator inside input */}
+              {isLoading && (
+                <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
 
             {/* Search History Dropdown */}
             {showSearchHistory && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white/95 dark:bg-black/90 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-2xl dark:shadow-cyan-500/10 z-50 max-h-60 overflow-y-auto mt-2">
+              <div className="absolute top-full left-0 right-0 bg-white/95 dark:bg-black/90 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-2xl dark:shadow-cyan-500/10 z-[70] max-h-60 overflow-y-auto mt-2">
                 <div className="p-2">
                   <div className="text-xs font-medium text-slate-500 dark:text-gray-400 mb-2 px-2">Recent Searches</div>
                   {searchHistory.map((term, index) => (
@@ -1329,11 +1420,13 @@ export default function SearchPage() {
                       onClick={() => {
                         setFilters(prev => ({ ...prev, query: term, page: 1 }));
                         setShowSearchHistory(false);
+                        // Trigger search immediately when selecting from history
+                        setTimeout(() => triggerInstantSearch(), 100);
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 rounded-xl text-sm flex items-center gap-2 transition-all duration-200 text-slate-900 dark:text-gray-200"
+                      className="w-full text-left px-3 py-3 sm:py-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 rounded-xl text-sm flex items-center gap-2 transition-all duration-200 text-slate-900 dark:text-gray-200 min-h-[44px] sm:min-h-auto touch-manipulation"
                     >
-                      <Search className="w-3 h-3 text-slate-400 dark:text-gray-500" />
-                      <span className="flex-1">{term}</span>
+                      <Search className="w-3 h-3 text-slate-400 dark:text-gray-500 flex-shrink-0" />
+                      <span className="flex-1 truncate">{term}</span>
                     </button>
                   ))}
                   <div className="border-t border-slate-200 dark:border-gray-800 mt-2 pt-2">
@@ -1345,11 +1438,66 @@ export default function SearchPage() {
                         }
                         setShowSearchHistory(false);
                       }}
-                      className="w-full text-left px-3 py-1 hover:bg-slate-100 dark:hover:bg-gray-800/50 rounded-xl text-xs text-slate-500 dark:text-gray-400 transition-colors duration-200"
+                      className="w-full text-left px-3 py-2 sm:py-1 hover:bg-slate-100 dark:hover:bg-gray-800/50 rounded-xl text-xs text-slate-500 dark:text-gray-400 transition-colors duration-200 min-h-[36px] sm:min-h-auto flex items-center touch-manipulation"
                     >
                       Clear history
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Search Suggestions/Quick Actions - Hidden on mobile when there are results */}
+            {filters.query.length > 0 && !isLoading && !showSearchHistory && searchResults.total === 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white/95 dark:bg-black/90 backdrop-blur-xl border border-slate-200/50 dark:border-gray-800/50 rounded-2xl shadow-xl dark:shadow-cyan-500/10 z-[65] mt-1">
+                <div className="p-2 sm:p-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 dark:text-gray-400">
+                        Searching for "{filters.query}"
+                      </span>
+                    </div>
+                    
+                    {/* Desktop keyboard shortcuts - hidden on mobile */}
+                    <div className="hidden sm:flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300 text-xs">Enter</kbd>
+                        <span className="text-slate-400">search</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300 text-xs">/</kbd>
+                        <span className="text-slate-400">focus</span>
+                      </div>
+                    </div>
+                    
+                    {/* Mobile search tip */}
+                    <div className="sm:hidden text-xs text-slate-400">
+                      Tap search button or press Enter
+                    </div>
+                  </div>
+                  
+                  {/* Quick search suggestions based on current input */}
+                  {filters.query.length >= 2 && (
+                    <div className="mt-2 pt-2 border-t border-slate-200/50 dark:border-gray-700/50">
+                      <div className="text-xs text-slate-500 dark:text-gray-400 mb-2">Quick suggestions:</div>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-1">
+                        {['perfume', 'skincare', 'bath', 'gift', 'combo'].filter((suggestion) =>
+                          suggestion.toLowerCase().includes(filters.query.toLowerCase())
+                        ).map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => {
+                              setFilters(prev => ({ ...prev, query: suggestion, page: 1 }));
+                              triggerInstantSearch();
+                            }}
+                            className="px-3 py-1.5 sm:px-2 sm:py-1 text-xs bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg transition-colors duration-200 min-h-[32px] sm:min-h-auto flex items-center justify-center touch-manipulation"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1450,9 +1598,9 @@ export default function SearchPage() {
 
             {/* Results Header */}
             {!isLoading && searchResults.total > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 p-4 sm:p-6 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl shadow-lg">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <h2 className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-6 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                     {searchResults.total} results for "{filters.query}"
                   </h2>
                   <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 text-blue-800 dark:text-blue-200 border-0">
@@ -1460,7 +1608,7 @@ export default function SearchPage() {
                   </Badge>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                   <FilterSheet />
                   
                   <Select value={filters.sortBy} onValueChange={(value) => 
